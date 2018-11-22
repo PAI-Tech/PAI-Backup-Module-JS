@@ -1,0 +1,18 @@
+{
+  "name": "@pai-tech/pai-backup",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "PAI-CODE",
+    "PAI-TECH"
+  ],
+  "license": "GPL-3.0",
+  "dependencies": {
+    "@pai-tech/pai-bot": "^1.0.11",
+    "@pai-tech/pai-code": "^1.1.43"
+  }
+}
