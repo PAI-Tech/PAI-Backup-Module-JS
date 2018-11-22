@@ -13,6 +13,7 @@
   "license": "GPL-3.0",
   "dependencies": {
     "@pai-tech/pai-bot": "^1.0.11",
-    "@pai-tech/pai-code": "^1.1.43"
+    "@pai-tech/pai-code": "^1.1.43",
+    "aws-sdk": "^2.361.0"
   }
 }

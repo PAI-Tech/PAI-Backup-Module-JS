@@ -10,6 +10,7 @@ const {
     PAIModuleCommandParamSchema
 } = require('@pai-tech/pai-code');
 
+const S3 = require('aws-sdk/clients/s3');
 
 class PCM_BACKUP extends PAICodeModule {
     constructor() {
