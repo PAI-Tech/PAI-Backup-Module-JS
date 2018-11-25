@@ -11,13 +11,14 @@ const {
 } = require('@pai-tech/pai-code');
 
 const AWS = require('aws-sdk');
-let fs = require('fs');
+const fs = require('fs');
 const BackupTask = require('./src/model/backup-task');
 
-let credentials = new AWS.SharedIniFileCredentials({
-    profile: 'personal-account'
-});
-AWS.config.credentials = credentials;
+// let credentials = new AWS.SharedIniFileCredentials({
+//     profile: 'personal-account'
+// });
+//AWS.config.credentials = credentials;
+
 AWS.config.update({
     region: 'eu-central-1'
 });
@@ -25,8 +26,6 @@ AWS.config.update({
 async function runBackupTask(entity) {
     PAILogger.info('Start backup: ' + entity._id);
 
-    //stubbed
-    //insert code to send to s3 here
     // Create S3 service object
     s3 = new AWS.S3({
         apiVersion: '2006-03-01'
