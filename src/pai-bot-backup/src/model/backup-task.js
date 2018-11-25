@@ -10,9 +10,8 @@ class BackupTask extends PAIEntity {
     constructor() {
         super();
 
-        // this.intervalPattern = null;
-        this.paiCodeToExecute = null;
-        this.isActive = null;
+        //path to file
+        this.filePath = null;
     }
 
     setEntityName() {

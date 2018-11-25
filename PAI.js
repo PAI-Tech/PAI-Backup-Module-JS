@@ -16,14 +16,13 @@ const {
     Module
 } = require('./index');
 
-
 async function start() {
 
     let module = new Module();
     await module.registerModule(); // register the module to PAICode
 
     let context = new PAICodeCommandContext('host', 'HardCoded');
-    let response = await PAICode.executeString(`pai-backup func`, context);
+    let response = await PAICode.executeString(`pai-backup backup-file filePath:"/test/filepath"`, context);
 
     let toPrint = JSON.stringify(response[0].response.data);
     console.log(toPrint);
