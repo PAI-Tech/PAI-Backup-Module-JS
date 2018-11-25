@@ -13,6 +13,8 @@ const {
 const AWS = require('aws-sdk');
 const fs = require('fs');
 const BackupTask = require('./src/model/backup-task');
+const zlib = require('zlib');
+const archiver = require('archiver');
 
 // let credentials = new AWS.SharedIniFileCredentials({
 //     profile: 'personal-account'
@@ -76,6 +78,25 @@ class PCM_BACKUP extends PAICodeModule {
 
     }
 
+    /**
+     * zips directory using node prior to uploading
+     */
+
+    zipDirectory(source, out){
+        const archive = archiver('zip',{ zlib: { level: 9 }});
+        const stream = fs.createWriteStream(out);
+
+        return new Promise((resolve, reject) => {
+            archive
+                .directory(source,false)
+                .on('error', err => reject(err))
+                .pipe(stream)
+            ;
+
+            stream.on('close', () => resolve());
+            archive.finalize();
+        });
+    }
 
     /**
      * load basic module commands from super
