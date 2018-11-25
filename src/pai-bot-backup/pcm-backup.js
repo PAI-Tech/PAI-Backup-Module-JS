@@ -10,20 +10,48 @@ const {
     PAIModuleCommandParamSchema
 } = require('@pai-tech/pai-code');
 
-const S3 = require('aws-sdk/clients/s3');
+const AWS = require('aws-sdk');
+let fs = require('fs');
 const BackupTask = require('./src/model/backup-task');
 
+let credentials = new AWS.SharedIniFileCredentials({
+    profile: 'personal-account'
+});
+AWS.config.credentials = credentials;
+AWS.config.update({
+    region: 'eu-central-1'
+});
 
 async function runBackupTask(entity) {
     PAILogger.info('Start backup: ' + entity._id);
 
-    let filePath = entity.filePath;
     //stubbed
     //insert code to send to s3 here
+    // Create S3 service object
+    s3 = new AWS.S3({
+        apiVersion: '2006-03-01'
+    });
+    // //arn:aws:s3:::paibackupjs
+    let uploadParams = {
+        Bucket: 'paibackupjs',
+        Key: entity.fileName,
+        Body: ''
+    };
+
+    let fileStream = fs.createReadStream(entity.fileName);
+    fileStream.on('error', (err) => {
+        PAILogger.info('Error reading file', err);
+    });
+    uploadParams.Body = fileStream;
+
+    let putObjectPromise = s3.putObject(uploadParams).promise();
+    putObjectPromise.then(function (data) {
+        PAILogger.info('Success');
+    }).catch(function (err) {
+        PAILogger.info(err);
+    });
 
     PAILogger.info('Finish backup ' + entity._id)
-    // }).catch(err => {
-    //     PAILogger.error(err);
 }
 
 class PCM_BACKUP extends PAICodeModule {
@@ -61,7 +89,7 @@ class PCM_BACKUP extends PAICodeModule {
             op: "backup-file",
             func: "backupFile",
             params: {
-                "filePath": new PAIModuleCommandParamSchema("filePath", "path of file to be backed up", true, "Path to file"),
+                "fileName": new PAIModuleCommandParamSchema("fileName", "file to be backed up", true, "file name"),
             }
         }));
 
@@ -79,7 +107,7 @@ class PCM_BACKUP extends PAICodeModule {
         return new Promise(async (resolve, reject) => {
 
             let entity = new BackupTask();
-            entity.filePath = cmd.params.filePath.value;
+            entity.fileName = cmd.params.fileName.value;
             await this.data.dataSource.save(entity);
 
             let result = await runBackupTask(entity);

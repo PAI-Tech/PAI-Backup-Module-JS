@@ -11,7 +11,7 @@ class BackupTask extends PAIEntity {
         super();
 
         //path to file
-        this.filePath = null;
+        this.fileName = null;
     }
 
     setEntityName() {

@@ -22,7 +22,7 @@ async function start() {
     await module.registerModule(); // register the module to PAICode
 
     let context = new PAICodeCommandContext('host', 'HardCoded');
-    let response = await PAICode.executeString(`pai-backup backup-file filePath:"/test/filepath"`, context);
+    let response = await PAICode.executeString(`pai-backup backup-file fileName:"file.txt"`, context);
 
     let toPrint = JSON.stringify(response[0].response.data);
     console.log(toPrint);
