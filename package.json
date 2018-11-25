@@ -14,6 +14,8 @@
   "dependencies": {
     "@pai-tech/pai-bot": "^1.0.11",
     "@pai-tech/pai-code": "^1.1.43",
-    "aws-sdk": "^2.361.0"
+    "archiver": "^3.0.0",
+    "aws-sdk": "^2.361.0",
+    "zip-dir": "^1.0.2"
   }
 }
