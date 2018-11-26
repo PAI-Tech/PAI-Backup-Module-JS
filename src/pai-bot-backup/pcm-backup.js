@@ -65,7 +65,7 @@ async function zipDirectory(sourceDirectoryPath, outputName) {
     console.log(sourceDirectoryPath + " " + outputName);
 
     PAILogger.info('Zipping directory "' + sourceDirectoryPath + '"');
-    new Promise((resolve, reject) => {
+    return new Promise((resolve, reject) => {
             fstream.Reader({
                     'path': sourceDirectoryPath,
                     'type': 'Directory'
@@ -80,8 +80,10 @@ async function zipDirectory(sourceDirectoryPath, outputName) {
                     else resolve();
                 })
         })
-        .then(PAILogger.info('Finished zipping directory.'));
-
+        .then(PAILogger.info('Finished zipping directory.'))
+        .catch(function (err) {
+            PAILogger.info(err);
+        });
 }
 
 
@@ -192,11 +194,10 @@ class PCM_BACKUP extends PAICodeModule {
                 entity.name = path.basename(entity.path);
             }
             //zip directory, passing in the path to the directory and the name
-            zipDirectory(entity.path, entity.name);
+            await zipDirectory(entity.path, entity.name);
 
             //send to S3
-            let fileStream = await convertToFileStream(entity.name + '.tar.gz');
-            let result = await uploadToS3(entity.name + '.tar.gz', fileStream);
+            let result = await uploadToS3(entity.name + '.tar.gz');
             resolve(result);
         });
     }
