@@ -16,6 +16,29 @@ const BackupTask = require('./src/model/backup-task');
 const zlib = require('zlib');
 const archiver = require('archiver');
 
+
+/**
+ * zips directory using node prior to uploading
+ */
+
+function zipDirectory(source, out){
+        const archive = archiver('zip',{ zlib: { level: 9 }});
+        const stream = fs.createWriteStream(out);
+
+        return new Promise((resolve, reject) => {
+            archive
+                .directory(source,false)
+                .on('error', err => reject(err))
+                .pipe(stream)
+            ;
+
+            stream.on('close', () => resolve());
+            archive.finalize();
+        });
+    }
+
+
+
 // let credentials = new AWS.SharedIniFileCredentials({
 //     profile: 'personal-account'
 // });
@@ -39,7 +62,13 @@ async function runBackupTask(entity) {
         Body: ''
     };
 
-    let fileStream = fs.createReadStream(entity.fileName);
+    const gzip = zlib.createGzip();
+    const inp = fs.createReadStream(entity.fileName);
+    const out = fs.createWriteStream(entity.fileName + '.gz');
+
+    inp.pipe(gzip).pipe(out);
+
+    let fileStream = fs.createReadStream(entity.fileName + '.gz');
     fileStream.on('error', (err) => {
         PAILogger.info('Error reading file', err);
     });
@@ -76,26 +105,6 @@ class PCM_BACKUP extends PAICodeModule {
         let entity = new BackupTask();
         this.data.entities[entity.setEntityName()] = BackupTask;
 
-    }
-
-    /**
-     * zips directory using node prior to uploading
-     */
-
-    zipDirectory(source, out){
-        const archive = archiver('zip',{ zlib: { level: 9 }});
-        const stream = fs.createWriteStream(out);
-
-        return new Promise((resolve, reject) => {
-            archive
-                .directory(source,false)
-                .on('error', err => reject(err))
-                .pipe(stream)
-            ;
-
-            stream.on('close', () => resolve());
-            archive.finalize();
-        });
     }
 
     /**
