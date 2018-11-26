@@ -10,49 +10,99 @@ const {
     PAIModuleCommandParamSchema
 } = require('@pai-tech/pai-code');
 
+const {
+    BackupObject,
+    BACKUP_TYPE
+} = require('./src/model/backup-object');
+
 const AWS = require('aws-sdk');
 const fs = require('fs');
-const BackupTask = require('./src/model/backup-task');
+const path = require('path');
 const zlib = require('zlib');
-const archiver = require('archiver');
+const fstream = require('fstream');
+const tar = require('tar');
+var archiver = require('archiver');
 
-// let credentials = new AWS.SharedIniFileCredentials({
-//     profile: 'personal-account'
-// });
-//AWS.config.credentials = credentials;
 
 AWS.config.update({
     region: 'eu-central-1'
 });
 
-async function runBackupTask(entity) {
-    PAILogger.info('Start backup: ' + entity._id);
+//Makes a file stream and uploads to S3
+//object name could be a file.gz or a directory.tar.gz
+async function uploadToS3(objectName) {
+
+    //convert to stream object
+    let fileStream = fs.createReadStream(objectName);
+    fileStream.on('error', (err) => {
+        PAILogger.info('Error reading file/directory', err);
+    });
 
     // Create S3 service object
     s3 = new AWS.S3({
         apiVersion: '2006-03-01'
     });
-    // //arn:aws:s3:::paibackupjs
+
+    //the object that is actually uploaded to S3
     let uploadParams = {
         Bucket: 'paibackupjs',
-        Key: entity.fileName,
-        Body: ''
+        Key: objectName,
+        Body: fileStream
     };
 
-    let fileStream = fs.createReadStream(entity.fileName);
-    fileStream.on('error', (err) => {
-        PAILogger.info('Error reading file', err);
-    });
-    uploadParams.Body = fileStream;
-
+    //Uploads the object
+    PAILogger.info('Upload to S3 started...');
     let putObjectPromise = s3.putObject(uploadParams).promise();
     putObjectPromise.then(function (data) {
-        PAILogger.info('Success');
+        PAILogger.info('Upload to S3 finished.');
     }).catch(function (err) {
         PAILogger.info(err);
     });
+}
 
-    PAILogger.info('Finish backup ' + entity._id)
+/**
+ * Zips directory prior to uploading
+ */
+async function zipDirectory(sourceDirectoryPath, outputName) {
+    console.log(sourceDirectoryPath + " " + outputName);
+
+    PAILogger.info('Zipping directory "' + sourceDirectoryPath + '"');
+    new Promise((resolve, reject) => {
+            fstream.Reader({
+                    'path': sourceDirectoryPath,
+                    'type': 'Directory'
+                }) /* Read the source directory */
+                .pipe(tar.Pack()) /* Convert the directory to a .tar file */
+                .pipe(zlib.Gzip()) /* Compress the .tar file */
+                .pipe(fstream.Writer({
+                    'path': outputName + '.tar.gz'
+                })) /* Give the output file name */
+                .on('finish', (err) => {
+                    if (err) return reject(err);
+                    else resolve();
+                })
+        })
+        .then(PAILogger.info('Finished zipping directory.'));
+
+}
+
+
+//Takes a source file (filename string), and returns a promise creating a 
+//compressed version of the file (.gz)
+async function zipFile(sourceFile) {
+    PAILogger.info('Zipping file "' + sourceFile + '"');
+
+    //create the archive
+    const gzip = zlib.createGzip();
+    const input = fs.createReadStream(sourceFile);
+    const output = fs.createWriteStream(sourceFile + '.gz');
+    return new Promise(async (resolve, reject) => {
+            input.pipe(gzip).pipe(output).on('finish', (err) => {
+                if (err) return reject(err);
+                else resolve();
+            })
+        })
+        .then(PAILogger.info('Finished zipping file.'));
 }
 
 class PCM_BACKUP extends PAICodeModule {
@@ -60,7 +110,7 @@ class PCM_BACKUP extends PAICodeModule {
 
         let infoText = `
         Welcome to PAI Backup:
-        This module allows a file to be sent to the cloud for secure backup.
+        This module allows a file/directory to be sent to the cloud for secure backup.
         `;
 
         super(infoText);
@@ -73,29 +123,9 @@ class PCM_BACKUP extends PAICodeModule {
 
         ];
 
-        let entity = new BackupTask();
-        this.data.entities[entity.setEntityName()] = BackupTask;
+        let entity = new BackupObject();
+        this.data.entities[entity.setEntityName()] = BackupObject;
 
-    }
-
-    /**
-     * zips directory using node prior to uploading
-     */
-
-    zipDirectory(source, out){
-        const archive = archiver('zip',{ zlib: { level: 9 }});
-        const stream = fs.createWriteStream(out);
-
-        return new Promise((resolve, reject) => {
-            archive
-                .directory(source,false)
-                .on('error', err => reject(err))
-                .pipe(stream)
-            ;
-
-            stream.on('close', () => resolve());
-            archive.finalize();
-        });
     }
 
     /**
@@ -109,10 +139,19 @@ class PCM_BACKUP extends PAICodeModule {
             op: "backup-file",
             func: "backupFile",
             params: {
-                "fileName": new PAIModuleCommandParamSchema("fileName", "file to be backed up", true, "file name"),
+                "name": new PAIModuleCommandParamSchema("name", "name of backup", false, "file name"),
+                "path": new PAIModuleCommandParamSchema("path", "path to file", true, "file path"),
             }
         }));
 
+        this.loadCommandWithSchema(new PAIModuleCommandSchema({
+            op: "backup-directory",
+            func: "backupDirectory",
+            params: {
+                "name": new PAIModuleCommandParamSchema("name", "name of backup", false, "directory name"),
+                "path": new PAIModuleCommandParamSchema("path", "path to directory", true, "directory path"),
+            }
+        }))
     }
 
     setModuleName() {
@@ -125,12 +164,41 @@ class PCM_BACKUP extends PAICodeModule {
      */
     backupFile(cmd) {
         return new Promise(async (resolve, reject) => {
-
-            let entity = new BackupTask();
-            entity.fileName = cmd.params.fileName.value;
+            let entity = new BackupObject();
+            entity.name = cmd.params.name.value;
+            entity.type = BACKUP_TYPE.FILE;
             await this.data.dataSource.save(entity);
 
-            let result = await runBackupTask(entity);
+            //zip file
+            await zipFile(entity.name);
+
+            //send to S3
+            let result = await uploadToS3(entity.name + '.gz');
+            resolve(result);
+        });
+    }
+
+    /**
+     * @param {PAICodeCommand} cmd
+     */
+    backupDirectory(cmd) {
+        return new Promise(async (resolve, reject) => {
+            let entity = new BackupObject();
+            entity.name = cmd.params.name.value;
+            entity.path = cmd.params.path.value;
+            entity.type = BACKUP_TYPE.DIRECTORY;
+            await this.data.dataSource.save(entity);
+
+            //if name wasn't given in the pai-code params, take it from the path
+            if (entity.name == null) {
+                entity.name = path.basename(entity.path);
+            }
+            //zip directory, passing in the path to the directory and the name
+            zipDirectory(entity.path, entity.name);
+
+            //send to S3
+            let fileStream = await convertToFileStream(entity.name + '.tar.gz');
+            let result = await uploadToS3(entity.name + '.tar.gz', fileStream);
             resolve(result);
         });
     }
