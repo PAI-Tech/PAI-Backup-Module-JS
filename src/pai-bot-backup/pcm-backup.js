@@ -21,7 +21,6 @@ const path = require('path');
 const zlib = require('zlib');
 const fstream = require('fstream');
 const tar = require('tar');
-var archiver = require('archiver');
 
 
 AWS.config.update({
@@ -31,7 +30,6 @@ AWS.config.update({
 //Makes a file stream and uploads to S3
 //object name could be a file.gz or a directory.tar.gz
 async function uploadToS3(objectName) {
-
     //convert to stream object
     let fileStream = fs.createReadStream(objectName);
     fileStream.on('error', (err) => {
