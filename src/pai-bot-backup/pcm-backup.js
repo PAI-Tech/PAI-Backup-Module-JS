@@ -50,12 +50,38 @@ async function uploadToS3(objectName) {
 
     //Uploads the object
     PAILogger.info('Upload to S3 started...');
-    let putObjectPromise = s3.putObject(uploadParams).promise();
-    putObjectPromise.then(function (data) {
-        PAILogger.info('Upload to S3 finished.');
-    }).catch(function (err) {
-        PAILogger.info(err);
+    // let putObjectPromise = s3.putObject(uploadParams).promise();
+    // putObjectPromise.then(function (data) {
+    //     PAILogger.info('Upload to S3 finished.');
+    // }).catch(function (err) {
+    //     PAILogger.info(err);
+    // });
+    s3.upload(uploadParams, function (err, data) {
+        if (err) {
+            console.log("Error", err);
+        }
+        if (data) {
+            console.log("Upload Success", data.Location);
+        }
     });
+    // fs.readFile(objectName, function (err, data) {
+    //     if (err) {
+    //         throw err;
+    //     }
+    //     params = {
+    //         Bucket: 'paibackupjs',
+    //         Key: objectName,
+    //         Body: new Buffer(data, 'Binary'),
+    //         ContentType: 'binary'
+    //     };
+    //     s3.putObject(params, function (err, data) {
+    //         if (err) {
+    //             PAILogger.info(err);
+    //         } else {
+    //             PAILogger.info('Upload to S3 finished for key ' + objectName);
+    //         }
+    //     });
+    // });
 }
 
 /**
@@ -65,27 +91,22 @@ async function zipDirectory(sourceDirectoryPath, outputName) {
     console.log(sourceDirectoryPath + " " + outputName);
 
     PAILogger.info('Zipping directory "' + sourceDirectoryPath + '"');
-    return new Promise((resolve, reject) => {
-            fstream.Reader({
-                    'path': sourceDirectoryPath,
-                    'type': 'Directory'
-                }) /* Read the source directory */
-                .pipe(tar.Pack()) /* Convert the directory to a .tar file */
-                .pipe(zlib.Gzip()) /* Compress the .tar file */
-                .pipe(fstream.Writer({
-                    'path': outputName + '.tar.gz'
-                })) /* Give the output file name */
-                .on('finish', (err) => {
-                    if (err) return reject(err);
-                    else resolve();
-                })
-        })
-        .then(PAILogger.info('Finished zipping directory.'))
-        .catch(function (err) {
-            PAILogger.info(err);
-        });
-}
 
+    tar.c({
+            gzip: true,
+            C: sourceDirectoryPath,
+            sync: true
+        },
+        fs.readdirSync(sourceDirectoryPath)
+    ).pipe(fs.createWriteStream(outputName + '.tgz'));
+    // .then(_ => {
+    //     PAILogger.info("Successfully created .tgz")
+    // }).catch((err) => {
+    //     PAILogger.info(err);
+    // })
+    PAILogger.info("successfully created .tgz");
+
+}
 
 //Takes a source file (filename string), and returns a promise creating a 
 //compressed version of the file (.gz)
@@ -195,9 +216,8 @@ class PCM_BACKUP extends PAICodeModule {
             }
             //zip directory, passing in the path to the directory and the name
             await zipDirectory(entity.path, entity.name);
-
             //send to S3
-            let result = await uploadToS3(entity.name + '.tar.gz');
+            let result = await uploadToS3(entity.name + '.tgz');
             resolve(result);
         });
     }

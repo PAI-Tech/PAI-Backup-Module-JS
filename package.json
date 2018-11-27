@@ -15,9 +15,7 @@
     "@pai-tech/pai-bot": "^1.0.11",
     "@pai-tech/pai-code": "^1.1.43",
     "aws-sdk": "^2.361.0",
-    "zlib": "^1.0.5",
-    "tar": "^1.0.0",
-    "fstream": "1.0.11",
-    "archiver": "3.0.0"
+    "tar": "^4.4.8",
+    "zlib": "^1.0.5"
   }
 }
