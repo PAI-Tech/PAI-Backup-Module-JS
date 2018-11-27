@@ -19,9 +19,7 @@ const AWS = require('aws-sdk');
 const fs = require('fs');
 const path = require('path');
 const zlib = require('zlib');
-const fstream = require('fstream');
 const tar = require('tar');
-
 
 AWS.config.update({
     region: 'eu-central-1'
@@ -64,24 +62,7 @@ async function uploadToS3(objectName) {
             console.log("Upload Success", data.Location);
         }
     });
-    // fs.readFile(objectName, function (err, data) {
-    //     if (err) {
-    //         throw err;
-    //     }
-    //     params = {
-    //         Bucket: 'paibackupjs',
-    //         Key: objectName,
-    //         Body: new Buffer(data, 'Binary'),
-    //         ContentType: 'binary'
-    //     };
-    //     s3.putObject(params, function (err, data) {
-    //         if (err) {
-    //             PAILogger.info(err);
-    //         } else {
-    //             PAILogger.info('Upload to S3 finished for key ' + objectName);
-    //         }
-    //     });
-    // });
+
 }
 
 /**
