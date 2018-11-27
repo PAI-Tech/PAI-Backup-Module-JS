@@ -27,7 +27,7 @@ AWS.config.update({
 
 
 /**
- * Makes a file stream and uploads to S3. objectName could be a 
+ * Creates a file stream and then uploads it to S3. objectName could be a 
  * file.gz / directory.tar.gz / directory.tgz / etc
  * 
  * @param {String} objectName =  file name of object to be uploaded 
@@ -52,7 +52,7 @@ async function uploadToS3(objectName) {
     };
 
     //Uploads the uploadParams object
-    PAILogger.info('Upload to S3 started...');
+    PAILogger.info('Upload to S3 bucket started...');
     s3.upload(uploadParams, function (err, data) {
         if (err) {
             PAILogger.info("Error during upload: ", err);
@@ -61,7 +61,55 @@ async function uploadToS3(objectName) {
             PAILogger.info("Upload to S3 bucket successful");
         }
     });
+
+    // const s3Promise = s3.putObject(uploadParams).promise();
+    // s3Promise.then((data) => {
+    //     if (data) {
+    //         PAILogger.info('Upload to S3 bucket successful');
+    //     }
+    // }).catch((err) => {
+    //     PAILogger.info(err);
+    // });
+    // await s3Promise;
+
 }
+
+/**
+ *  Downloads an object from S3 with the identifier "objectKey", saved with the same
+ *  file name/directory name.
+ * @param {String} objectKey = S3 reference for the object to be downloaded
+ * @param {String} downloadPath = local path to save the object to
+ */
+async function downloadFromS3(objectKey, downloadPath) {
+    //Create S3 service object
+    s3 = new AWS.S3({
+        apiVersion: '2006-03-01'
+    });
+
+    const downloadParams = {
+        Bucket: 'paibackupjs',
+        Key: objectKey
+    };
+
+    //download object (sync)
+    // s3.getObject(downloadParams, (err, data) => {
+    //     if (err) PAILogger.error(err);
+    //     await fs.writeFile(objectKey, data.Body.toString());
+    //     PAILogger.info(`${objectKey} downloaded to ${downloadPath} successfully`);
+    // });
+    const file = fs.createWriteStream(downloadPath + '/' + objectKey);
+    const s3Promise = s3.getObject(downloadParams).promise();
+
+    s3Promise.then((data) => {
+        file.write(data.Body, () => {
+            file.end();
+            PAILogger.info(`${objectKey} downloaded to ${downloadPath} successfully`);
+        });
+    }).catch((err) => {
+        PAILogger.info(err);
+    });
+}
+
 
 /**
  * Zips a directory into a .tgz archive
@@ -79,11 +127,9 @@ async function zipDirectory(sourceDirectoryPath, outputName) {
         },
         fs.readdirSync(sourceDirectoryPath)
     ).pipe(fs.createWriteStream(outputName + '.tgz'));
-    // .then(_ => {
-    //     PAILogger.info("Successfully created .tgz")
-    // }).catch((err) => {
-    //     PAILogger.info(err);
-    // })
+
+    PAILogger.info('Finished zipping directory.');
+
 }
 
 /**
@@ -151,6 +197,16 @@ class PCM_BACKUP extends PAICodeModule {
             params: {
                 "name": new PAIModuleCommandParamSchema("name", "name of backup", false, "directory name"),
                 "path": new PAIModuleCommandParamSchema("path", "path to directory", true, "directory path"),
+                //delete local backup
+            }
+        }))
+
+        this.loadCommandWithSchema(new PAIModuleCommandSchema({
+            op: "download-backup",
+            func: "downloadBackup",
+            params: {
+                "key": new PAIModuleCommandParamSchema("key", "key of backup on S3", true, "key string"),
+                "path": new PAIModuleCommandParamSchema("path", "path to store backup object", true, "path to download backup object to")
             }
         }))
     }
@@ -175,6 +231,7 @@ class PCM_BACKUP extends PAICodeModule {
 
             //send to S3
             let result = await uploadToS3(entity.name + '.gz');
+            entity.key = entity.name + '.gz';
             resolve(result);
         });
     }
@@ -185,24 +242,48 @@ class PCM_BACKUP extends PAICodeModule {
     backupDirectory(cmd) {
         return new Promise(async (resolve, reject) => {
             let entity = new BackupObject();
-            entity.name = cmd.params.name.value;
             entity.path = cmd.params.path.value;
-            entity.type = BACKUP_TYPE.DIRECTORY;
-            await this.data.dataSource.save(entity);
-
             //if name wasn't given in the pai-code params, take it from the path param
-            if (entity.name == null) {
-                entity.name = path.basename(entity.path);
-            }
+            entity.name = (cmd.params.name == null) ?
+                path.basename(entity.path) :
+                cmd.params.name.value;
+            entity.type = BACKUP_TYPE.DIRECTORY;
+
+            await this.data.dataSource.save(entity);
 
             //zip directory, passing in the path to the directory and the name
             await zipDirectory(entity.path, entity.name);
 
             //send to S3
             let result = await uploadToS3(entity.name + '.tgz');
+            entity.key = entity.name + '.tgz';
             resolve(result);
         });
     }
+
+
+    /**
+     * @param {PAICodeCommand} cmd
+     */
+    downloadBackup(cmd) {
+        return new Promise(async (resolve, reject) => {
+            let entity = new BackupObject();
+            entity.key = cmd.params.key.value;
+            // //if path wasn't given in the pai-code params, use this directory as a default
+            // entity.path = (cmd.params.path == null) ?
+            //     __dirname :
+            //     cmd.params.path.value;
+            entity.path = cmd.params.path.value;
+
+            await this.data.dataSource.save(entity);
+
+            //download object from S3
+            let result = await downloadFromS3(entity.key, entity.path);
+            resolve(result);
+        });
+    }
+
+
 }
 
 module.exports = PCM_BACKUP;

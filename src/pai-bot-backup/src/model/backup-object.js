@@ -11,10 +11,13 @@ class BackupObject extends PAIEntity {
         //name of file/directory
         this.name = null;
 
+        //key of file/directory on S3
+        this.key = null;
+
         //path to file/directory
         this.path = null;
 
-        //file or directory
+        //type (file or directory)
         this.type = BACKUP_TYPE.FILE;
     }
 
