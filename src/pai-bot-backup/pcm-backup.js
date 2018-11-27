@@ -15,9 +15,9 @@ const {
     BACKUP_TYPE
 } = require('./src/model/backup-object');
 
-const AWS = require('aws-sdk');
 const fs = require('fs');
 const path = require('path');
+const AWS = require('aws-sdk');
 const zlib = require('zlib');
 const tar = require('tar');
 
@@ -25,54 +25,53 @@ AWS.config.update({
     region: 'eu-central-1'
 });
 
-//Makes a file stream and uploads to S3
-//object name could be a file.gz or a directory.tar.gz
+
+/**
+ * Makes a file stream and uploads to S3. objectName could be a 
+ * file.gz / directory.tar.gz / directory.tgz / etc
+ * 
+ * @param {String} objectName =  file name of object to be uploaded 
+ */
 async function uploadToS3(objectName) {
-    //convert to stream object
+    //Convert to stream object
     let fileStream = fs.createReadStream(objectName);
     fileStream.on('error', (err) => {
         PAILogger.info('Error reading file/directory', err);
     });
 
-    // Create S3 service object
+    //Create S3 service object
     s3 = new AWS.S3({
         apiVersion: '2006-03-01'
     });
 
-    //the object that is actually uploaded to S3
+    //The object that is uploaded to S3
     let uploadParams = {
         Bucket: 'paibackupjs',
         Key: objectName,
         Body: fileStream
     };
 
-    //Uploads the object
+    //Uploads the uploadParams object
     PAILogger.info('Upload to S3 started...');
-    // let putObjectPromise = s3.putObject(uploadParams).promise();
-    // putObjectPromise.then(function (data) {
-    //     PAILogger.info('Upload to S3 finished.');
-    // }).catch(function (err) {
-    //     PAILogger.info(err);
-    // });
     s3.upload(uploadParams, function (err, data) {
         if (err) {
-            console.log("Error", err);
+            PAILogger.info("Error during upload: ", err);
         }
         if (data) {
-            console.log("Upload Success", data.Location);
+            PAILogger.info("Upload to S3 bucket successful");
         }
     });
-
 }
 
 /**
- * Zips directory prior to uploading
+ * Zips a directory into a .tgz archive
+ * @param {String} sourceDirectoryPath = path to the directory
+ * @param {String} outputName = name of the archive to be output (without file extension)
  */
 async function zipDirectory(sourceDirectoryPath, outputName) {
-    console.log(sourceDirectoryPath + " " + outputName);
-
     PAILogger.info('Zipping directory "' + sourceDirectoryPath + '"');
 
+    //Zips and outputs a .tgz of the directory at /sourceDirectoryPath/
     tar.c({
             gzip: true,
             C: sourceDirectoryPath,
@@ -85,18 +84,18 @@ async function zipDirectory(sourceDirectoryPath, outputName) {
     // }).catch((err) => {
     //     PAILogger.info(err);
     // })
-    PAILogger.info("successfully created .tgz");
-
 }
 
-//Takes a source file (filename string), and returns a promise creating a 
-//compressed version of the file (.gz)
+/**
+ * Zips a file into a .gz compressed file.
+ * @param {String} sourceFile = name of file to be zipped
+ */
 async function zipFile(sourceFile) {
     PAILogger.info('Zipping file "' + sourceFile + '"');
 
-    //create the archive
-    const gzip = zlib.createGzip();
     const input = fs.createReadStream(sourceFile);
+    //Create the archive
+    const gzip = zlib.createGzip();
     const output = fs.createWriteStream(sourceFile + '.gz');
     return new Promise(async (resolve, reject) => {
             input.pipe(gzip).pipe(output).on('finish', (err) => {
@@ -171,7 +170,7 @@ class PCM_BACKUP extends PAICodeModule {
             entity.type = BACKUP_TYPE.FILE;
             await this.data.dataSource.save(entity);
 
-            //zip file
+            //zip file, passing in name
             await zipFile(entity.name);
 
             //send to S3
@@ -191,12 +190,14 @@ class PCM_BACKUP extends PAICodeModule {
             entity.type = BACKUP_TYPE.DIRECTORY;
             await this.data.dataSource.save(entity);
 
-            //if name wasn't given in the pai-code params, take it from the path
+            //if name wasn't given in the pai-code params, take it from the path param
             if (entity.name == null) {
                 entity.name = path.basename(entity.path);
             }
+
             //zip directory, passing in the path to the directory and the name
             await zipDirectory(entity.path, entity.name);
+
             //send to S3
             let result = await uploadToS3(entity.name + '.tgz');
             resolve(result);
