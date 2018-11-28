@@ -11,7 +11,7 @@ class BackupObject extends PAIEntity {
         //name of file/directory
         this.name = null;
 
-        //key of file/directory on S3
+        //archive name, and also the 'key' on the S3 bucket
         this.key = null;
 
         //path to file/directory

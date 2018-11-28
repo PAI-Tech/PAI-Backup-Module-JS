@@ -25,16 +25,19 @@ AWS.config.update({
     region: 'eu-central-1'
 });
 
-
 /**
  * Creates a file stream and then uploads it to S3. objectName could be a 
  * file.gz / directory.tar.gz / directory.tgz / etc
  * 
- * @param {String} objectName =  file name of object to be uploaded 
+ * @param {BackupObject} object =  object to be uploaded 
+ * @param {"true"/"false"} keepLocalCopy = whether to delete the object after upload or not
+ * @requires object.key is a filename in the current directory
  */
-async function uploadToS3(objectName) {
+async function uploadToS3(backupObject, keepLocalCopy) {
+    const objectKey = backupObject.key;
+
     //Convert to stream object
-    let fileStream = fs.createReadStream(objectName);
+    let fileStream = fs.createReadStream(objectKey);
     fileStream.on('error', (err) => {
         PAILogger.info('Error reading file/directory', err);
     });
@@ -47,40 +50,45 @@ async function uploadToS3(objectName) {
     //The object that is uploaded to S3
     let uploadParams = {
         Bucket: 'paibackupjs',
-        Key: objectName,
+        Key: objectKey,
         Body: fileStream
     };
 
-    //Uploads the uploadParams object
+    //Uploads the uploadParams object, and deletes local copy if specified in backupObject
     PAILogger.info('Upload to S3 bucket started...');
-    s3.upload(uploadParams, function (err, data) {
-        if (err) {
-            PAILogger.info("Error during upload: ", err);
-        }
+    s3.upload(uploadParams, (err, data) => {
+        if (err) PAILogger.info("Error during upload: ", err);
         if (data) {
+            if (keepLocalCopy == "false") {
+                deleteFromLocal(objectKey);
+            }
             PAILogger.info("Upload to S3 bucket successful");
         }
     });
+}
 
-    // const s3Promise = s3.putObject(uploadParams).promise();
-    // s3Promise.then((data) => {
-    //     if (data) {
-    //         PAILogger.info('Upload to S3 bucket successful');
-    //     }
-    // }).catch((err) => {
-    //     PAILogger.info(err);
-    // });
-    // await s3Promise;
-
+/**
+ * Delete local object / file 
+ * @param {String} fileName = file to be deleted
+ */
+function deleteFromLocal(fileName) {
+    fs.unlink(fileName, (err) => {
+        if (err) throw err;
+        //file has been deleted successfully
+        PAILogger.info('Local copy deleted');
+    });
 }
 
 /**
  *  Downloads an object from S3 with the identifier "objectKey", saved with the same
- *  file name/directory name.
- * @param {String} objectKey = S3 reference for the object to be downloaded
- * @param {String} downloadPath = local path to save the object to
+ *  file name/directory name to a "downloadPath" location.
+ * @param {BackupObject} backupObject = reference for the object to be downloaded, containing
+ *  key (S3 key) and path (location to save to)
  */
-async function downloadFromS3(objectKey, downloadPath) {
+async function downloadFromS3(backupObject) {
+    const objectKey = backupObject.key;
+    const downloadPath = backupObject.path;
+
     //Create S3 service object
     s3 = new AWS.S3({
         apiVersion: '2006-03-01'
@@ -91,12 +99,6 @@ async function downloadFromS3(objectKey, downloadPath) {
         Key: objectKey
     };
 
-    //download object (sync)
-    // s3.getObject(downloadParams, (err, data) => {
-    //     if (err) PAILogger.error(err);
-    //     await fs.writeFile(objectKey, data.Body.toString());
-    //     PAILogger.info(`${objectKey} downloaded to ${downloadPath} successfully`);
-    // });
     const file = fs.createWriteStream(downloadPath + '/' + objectKey);
     const s3Promise = s3.getObject(downloadParams).promise();
 
@@ -110,13 +112,13 @@ async function downloadFromS3(objectKey, downloadPath) {
     });
 }
 
-
 /**
  * Zips a directory into a .tgz archive
- * @param {String} sourceDirectoryPath = path to the directory
- * @param {String} outputName = name of the archive to be output (without file extension)
+ * @param {BackupObject} entity = data object containing directory's path and name
  */
-async function zipDirectory(sourceDirectoryPath, outputName) {
+async function zipDirectory(backupObject) {
+    const sourceDirectoryPath = backupObject.path;
+    const outputName = backupObject.key;
     PAILogger.info('Zipping directory "' + sourceDirectoryPath + '"');
 
     //Zips and outputs a .tgz of the directory at /sourceDirectoryPath/
@@ -126,7 +128,7 @@ async function zipDirectory(sourceDirectoryPath, outputName) {
             sync: true
         },
         fs.readdirSync(sourceDirectoryPath)
-    ).pipe(fs.createWriteStream(outputName + '.tgz'));
+    ).pipe(fs.createWriteStream(outputName));
 
     PAILogger.info('Finished zipping directory.');
 
@@ -134,15 +136,16 @@ async function zipDirectory(sourceDirectoryPath, outputName) {
 
 /**
  * Zips a file into a .gz compressed file.
- * @param {String} sourceFile = name of file to be zipped
+ * @param {BackupObject} backupObject = data object containing file's path and name
  */
-async function zipFile(sourceFile) {
+async function zipFile(backupObject) {
+    const sourceFile = backupObject.name;
     PAILogger.info('Zipping file "' + sourceFile + '"');
 
     const input = fs.createReadStream(sourceFile);
     //Create the archive
     const gzip = zlib.createGzip();
-    const output = fs.createWriteStream(sourceFile + '.gz');
+    const output = fs.createWriteStream(backupObject.key);
     return new Promise(async (resolve, reject) => {
             input.pipe(gzip).pipe(output).on('finish', (err) => {
                 if (err) return reject(err);
@@ -172,7 +175,6 @@ class PCM_BACKUP extends PAICodeModule {
 
         let entity = new BackupObject();
         this.data.entities[entity.setEntityName()] = BackupObject;
-
     }
 
     /**
@@ -186,8 +188,9 @@ class PCM_BACKUP extends PAICodeModule {
             op: "backup-file",
             func: "backupFile",
             params: {
-                "name": new PAIModuleCommandParamSchema("name", "name of backup", false, "file name"),
-                "path": new PAIModuleCommandParamSchema("path", "path to file", true, "file path"),
+                "name": new PAIModuleCommandParamSchema("name", "name of backup", true, "file name"),
+                "path": new PAIModuleCommandParamSchema("path", "path to file", false, "file path"),
+                "keepLocalCopy": new PAIModuleCommandParamSchema("keepLocalCopy", "whether or not to keep a backup copy locally", false, "keep a local copy")
             }
         }));
 
@@ -197,7 +200,7 @@ class PCM_BACKUP extends PAICodeModule {
             params: {
                 "name": new PAIModuleCommandParamSchema("name", "name of backup", false, "directory name"),
                 "path": new PAIModuleCommandParamSchema("path", "path to directory", true, "directory path"),
-                //delete local backup
+                "keepLocalCopy": new PAIModuleCommandParamSchema("keepLocalCopy", "whether or not to keep a backup copy locally", false, "keep a local copy")
             }
         }))
 
@@ -223,15 +226,20 @@ class PCM_BACKUP extends PAICodeModule {
         return new Promise(async (resolve, reject) => {
             let entity = new BackupObject();
             entity.name = cmd.params.name.value;
+            entity.key = entity.name + '.gz';
             entity.type = BACKUP_TYPE.FILE;
             await this.data.dataSource.save(entity);
 
-            //zip file, passing in name
-            await zipFile(entity.name);
+            //zip file, passing in a data object containing path to file and its name
+            await zipFile(entity);
+
+            //store a local backup or not
+            let keepLocalCopy = (cmd.params.keepLocalCopy === null) ?
+                "false" :
+                cmd.params.keepLocalCopy.value;
 
             //send to S3
-            let result = await uploadToS3(entity.name + '.gz');
-            entity.key = entity.name + '.gz';
+            let result = await uploadToS3(entity, keepLocalCopy);
             resolve(result);
         });
     }
@@ -247,16 +255,22 @@ class PCM_BACKUP extends PAICodeModule {
             entity.name = (cmd.params.name == null) ?
                 path.basename(entity.path) :
                 cmd.params.name.value;
+            entity.key = entity.name + '.tgz';
             entity.type = BACKUP_TYPE.DIRECTORY;
 
             await this.data.dataSource.save(entity);
 
-            //zip directory, passing in the path to the directory and the name
-            await zipDirectory(entity.path, entity.name);
+            //zip directory, passing in the data object
+            //containing path to the directory and the output name (entity.key)
+            await zipDirectory(entity);
+
+            //store a local backup or not, false by default
+            let keepLocalCopy = (cmd.params.keepLocalCopy === null) ?
+                "false" :
+                cmd.params.keepLocalCopy.value;
 
             //send to S3
-            let result = await uploadToS3(entity.name + '.tgz');
-            entity.key = entity.name + '.tgz';
+            let result = await uploadToS3(entity, keepLocalCopy);
             resolve(result);
         });
     }
@@ -278,12 +292,10 @@ class PCM_BACKUP extends PAICodeModule {
             await this.data.dataSource.save(entity);
 
             //download object from S3
-            let result = await downloadFromS3(entity.key, entity.path);
+            let result = await downloadFromS3(entity);
             resolve(result);
         });
     }
-
-
 }
 
 module.exports = PCM_BACKUP;
