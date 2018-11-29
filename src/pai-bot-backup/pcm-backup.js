@@ -29,10 +29,13 @@ AWS.config.update({
  * Creates a file stream and then uploads it to S3. objectName could be a 
  * file.gz / directory.tar.gz / directory.tgz / etc
  * 
- * @param {BackupObject} backupObject =  object to be uploaded 
+ * @param {BackupObject} object =  object to be uploaded 
  * @param {"true"/"false"} keepLocalCopy = whether to delete the object after upload or not
+ * @requires object.key is a filename in the current directory
  */
 async function uploadToS3(backupObject, keepLocalCopy) {
+    const objectKey = backupObject.key;
+
     //Convert to stream object
     let fileStream = fs.createReadStream(objectKey);
     fileStream.on('error', (err) => {
@@ -47,7 +50,7 @@ async function uploadToS3(backupObject, keepLocalCopy) {
     //The object that is uploaded to S3
     let uploadParams = {
         Bucket: 'paibackupjs',
-        Key: backupObject.key,
+        Key: objectKey,
         Body: fileStream
     };
 
@@ -57,7 +60,7 @@ async function uploadToS3(backupObject, keepLocalCopy) {
         if (err) PAILogger.info("Error during upload: " + err);
         if (data) {
             if (keepLocalCopy == "false") {
-                deleteFromLocal(backupObject.key);
+                deleteFromLocal(objectKey);
             }
             PAILogger.info("Upload to S3 bucket successful");
         }
