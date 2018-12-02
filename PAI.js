@@ -21,15 +21,15 @@ async function start() {
     await module.registerModule(); // register the module to PAICode
 
     let context = new PAICodeCommandContext("host", "HardCoded");
-    let response = await PAICode.executeString(
-        `pai-backup backup-file name:"file2.txt"`,
-        context
-    );
-    //let response = await PAICode.executeString(`pai-backup backup-file name:"file3.txt" path:"` + __dirname + `/data/"`, context);
-    //   let response = await PAICode.executeString(
+    // let response = await PAICode.executeString(
+    //     `pai-backup backup-file name:"file2.txt"`,
+    //     context
+    // );
+    //let response = await PAICode.executeString(`pai-backup backup-file name:"file3.txt" path:"` + __dirname + `/data"`, context);
+    // let response = await PAICode.executeString(
     //     `pai-backup backup-directory name:"data" path:"` + __dirname + `/data"`,
     //     context
-    //   );
+    // );
     //let response = await PAICode.executeString(`pai-backup backup-directory path:"` + __dirname + `/data"`, context);
     //let response = await PAICode.executeString(`pai-backup download-backup key:"file2.txt.gz" path:"` + __dirname + `"`, context);
     //let response = await PAICode.executeString(`pai-backup download-backup key:"data.tgz" path:"` + __dirname + `"`, context);
@@ -42,7 +42,7 @@ async function start() {
 
     //error handling & edge case testing:
     //let response = await PAICode.executeString(`pai-backup backup-file name:"p.txt" path:"data"`);
-    //let response = await PAICode.executeString(`pai-backup backup-file name:"file3.txt" path:"data"`);
+    //let response = await PAICode.executeString(`pai-backup backup-file name:"file3.txt" path:"datap"`);
     //let response = await PAICode.executeString(`pai-backup backup-directory name:"" path:"/notarealdirectory"`)
 
     let toPrint = JSON.stringify(response[0].response.data);
