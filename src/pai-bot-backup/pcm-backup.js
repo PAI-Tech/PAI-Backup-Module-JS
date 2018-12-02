@@ -8,51 +8,51 @@ const {
     PAILogger,
     PAIModuleCommandSchema,
     PAIModuleCommandParamSchema
-} = require('@pai-tech/pai-code');
+} = require("@pai-tech/pai-code");
 
 const {
     BackupObject,
     BACKUP_TYPE
-} = require('./src/model/backup-object');
+} = require("./src/model/backup-object");
 
-const fs = require('fs');
-const path = require('path');
-const AWS = require('aws-sdk');
-const zlib = require('zlib');
-const tar = require('tar');
+const fs = require("fs");
+const path = require("path");
+const AWS = require("aws-sdk");
+const zlib = require("zlib");
+const tar = require("tar");
 
 AWS.config.update({
-    region: 'eu-central-1'
+    region: "eu-central-1"
 });
 
 /**
- * Creates a file stream and then uploads it to S3. objectName could be a 
+ * Creates a file stream and then uploads it to S3. objectName could be a
  * file.gz / directory.tar.gz / directory.tgz / etc
- * 
- * @param {BackupObject} backupObject =  object to be uploaded 
+ *
+ * @param {BackupObject} backupObject =  object to be uploaded
  * @param {"true"/"false"} keepLocalCopy = whether to delete the object after upload or not
  */
 async function uploadToS3(backupObject, keepLocalCopy) {
     //Convert to stream object
-    let fileStream = fs.createReadStream(objectKey);
-    fileStream.on('error', (err) => {
-        PAILogger.info('Error reading file/directory', err);
+    let fileStream = fs.createReadStream(backupObject.key);
+    fileStream.on("error", err => {
+        PAILogger.info("Error reading file/directory", err);
     });
 
     //Create S3 service object
     s3 = new AWS.S3({
-        apiVersion: '2006-03-01'
+        apiVersion: "2006-03-01"
     });
 
     //The object that is uploaded to S3
     let uploadParams = {
-        Bucket: 'paibackupjs',
+        Bucket: "paibackupjs",
         Key: backupObject.key,
         Body: fileStream
     };
 
     //Uploads the uploadParams object, and deletes local copy if specified in backupObject
-    PAILogger.info('Upload to S3 bucket started...');
+    PAILogger.info("Upload to S3 bucket started...");
     s3.upload(uploadParams, (err, data) => {
         if (err) PAILogger.info("Error during upload: " + err);
         if (data) {
@@ -65,13 +65,13 @@ async function uploadToS3(backupObject, keepLocalCopy) {
 }
 
 /**
- * Delete local object / file 
+ * Delete local object / file
  * @param {String} fileName = file to be deleted
  */
 function deleteFromLocal(fileName) {
-    fs.unlink(fileName, (err) => {
+    fs.unlink(fileName, err => {
         if (err) throw err;
-        PAILogger.info('Local copy deleted');
+        PAILogger.info("Local copy deleted");
     });
 }
 
@@ -87,26 +87,30 @@ async function downloadFromS3(backupObject) {
 
     //Create S3 service object
     s3 = new AWS.S3({
-        apiVersion: '2006-03-01'
+        apiVersion: "2006-03-01"
     });
 
     const downloadParams = {
-        Bucket: 'paibackupjs',
+        Bucket: "paibackupjs",
         Key: objectKey
     };
 
-    const file = fs.createWriteStream(downloadPath + '/' + objectKey);
+    const file = fs.createWriteStream(downloadPath + "/" + objectKey);
     PAILogger.info(`Downloading object ${objectKey}`);
     const s3Promise = s3.getObject(downloadParams).promise();
 
-    s3Promise.then((data) => {
-        file.write(data.Body, () => {
-            file.end();
-            PAILogger.info(`${objectKey} downloaded to ${downloadPath} successfully`);
+    s3Promise
+        .then(data => {
+            file.write(data.Body, () => {
+                file.end();
+                PAILogger.info(
+                    `${objectKey} downloaded to ${downloadPath} successfully`
+                );
+            });
+        })
+        .catch(err => {
+            PAILogger.info(err);
         });
-    }).catch((err) => {
-        PAILogger.info(err);
-    });
 }
 
 /**
@@ -121,13 +125,15 @@ function zipDirectory(backupObject) {
     //Zips and outputs a .tgz of the directory at /sourceDirectoryPath/
     return new Promise(async (resolve, reject) => {
         try {
-            tar.c({
-                    gzip: true,
-                    C: sourceDirectoryPath,
-                    sync: true
-                },
-                fs.readdirSync(sourceDirectoryPath)
-            ).pipe(fs.createWriteStream(outputName));
+            tar
+                .c({
+                        gzip: true,
+                        C: sourceDirectoryPath,
+                        sync: true
+                    },
+                    fs.readdirSync(sourceDirectoryPath)
+                )
+                .pipe(fs.createWriteStream(outputName));
             resolve();
         } catch (err) {
             reject(err);
@@ -145,23 +151,28 @@ async function zipFile(backupObject) {
 
     return new Promise(async (resolve, reject) => {
         //check if file can be opened
-        input = fs.createReadStream(sourceFile).on('error', (err) => {
-            reject(err);
-        }).on('open', _ => {
-            //Create the archive
-            const gzip = zlib.createGzip();
-            const output = fs.createWriteStream(backupObject.key);
-            input.pipe(gzip).pipe(output).on('finish', (err) => {
-                if (err) return reject(err);
-                else resolve();
+        input = fs
+            .createReadStream(sourceFile)
+            .on("error", err => {
+                reject(err);
             })
-        });
+            .on("open", _ => {
+                //Create the archive
+                const gzip = zlib.createGzip();
+                const output = fs.createWriteStream(backupObject.key);
+                input
+                    .pipe(gzip)
+                    .pipe(output)
+                    .on("finish", err => {
+                        if (err) return reject(err);
+                        else resolve();
+                    });
+            });
     });
 }
 
 class PCM_BACKUP extends PAICodeModule {
     constructor() {
-
         let infoText = `
         Welcome to PAI Backup:
         This module allows a file/directory to be sent to the cloud for secure backup.
@@ -172,9 +183,7 @@ class PCM_BACKUP extends PAICodeModule {
         this.config.schema = [
             //PAIModuleConfigParam(label, description, paramName, defaultValue)
             // TODO: add configuration parameters
-
-            //security params ? i.e protecting keys for AWS 
-
+            //security params ? i.e protecting keys for AWS
         ];
 
         let entity = new BackupObject();
@@ -188,40 +197,86 @@ class PCM_BACKUP extends PAICodeModule {
     async load() {
         await super.load(this);
 
-        this.loadCommandWithSchema(new PAIModuleCommandSchema({
-            op: "backup-file",
-            func: "backupFile",
-            params: {
-                "name": new PAIModuleCommandParamSchema("name", "name of backup", true, "file name"),
-                //path to parent directory
-                "path": new PAIModuleCommandParamSchema("path", "path to file", false, "file path"),
-                "keepLocalCopy": new PAIModuleCommandParamSchema("keepLocalCopy", "whether or not to keep a backup copy locally", false, "keep a local copy")
-            }
-        }));
+        this.loadCommandWithSchema(
+            new PAIModuleCommandSchema({
+                op: "backup-file",
+                func: "backupFile",
+                params: {
+                    name: new PAIModuleCommandParamSchema(
+                        "name",
+                        "name of backup",
+                        true,
+                        "file name"
+                    ),
+                    //path to parent directory
+                    path: new PAIModuleCommandParamSchema(
+                        "path",
+                        "path to file",
+                        false,
+                        "file path"
+                    ),
+                    keepLocalCopy: new PAIModuleCommandParamSchema(
+                        "keepLocalCopy",
+                        "whether or not to keep a backup copy locally",
+                        false,
+                        "keep a local copy"
+                    )
+                }
+            })
+        );
 
-        this.loadCommandWithSchema(new PAIModuleCommandSchema({
-            op: "backup-directory",
-            func: "backupDirectory",
-            params: {
-                "name": new PAIModuleCommandParamSchema("name", "name of backup", false, "directory name"),
-                //path to directory
-                "path": new PAIModuleCommandParamSchema("path", "path to directory", true, "directory path"),
-                "keepLocalCopy": new PAIModuleCommandParamSchema("keepLocalCopy", "whether or not to keep a backup copy locally", false, "keep a local copy")
-            }
-        }))
+        this.loadCommandWithSchema(
+            new PAIModuleCommandSchema({
+                op: "backup-directory",
+                func: "backupDirectory",
+                params: {
+                    name: new PAIModuleCommandParamSchema(
+                        "name",
+                        "name of backup",
+                        false,
+                        "directory name"
+                    ),
+                    //path to directory
+                    path: new PAIModuleCommandParamSchema(
+                        "path",
+                        "path to directory",
+                        true,
+                        "directory path"
+                    ),
+                    keepLocalCopy: new PAIModuleCommandParamSchema(
+                        "keepLocalCopy",
+                        "whether or not to keep a backup copy locally",
+                        false,
+                        "keep a local copy"
+                    )
+                }
+            })
+        );
 
-        this.loadCommandWithSchema(new PAIModuleCommandSchema({
-            op: "download-backup",
-            func: "downloadBackup",
-            params: {
-                "key": new PAIModuleCommandParamSchema("key", "key of backup on S3", true, "key string"),
-                "path": new PAIModuleCommandParamSchema("path", "path to store backup object", true, "path to download backup object to")
-            }
-        }))
+        this.loadCommandWithSchema(
+            new PAIModuleCommandSchema({
+                op: "download-backup",
+                func: "downloadBackup",
+                params: {
+                    key: new PAIModuleCommandParamSchema(
+                        "key",
+                        "key of backup on S3",
+                        true,
+                        "key string"
+                    ),
+                    path: new PAIModuleCommandParamSchema(
+                        "path",
+                        "path to store backup object",
+                        true,
+                        "path to download backup object to"
+                    )
+                }
+            })
+        );
     }
 
     setModuleName() {
-        return 'pai-backup';
+        return "pai-backup";
     }
 
     /**
@@ -232,32 +287,32 @@ class PCM_BACKUP extends PAICodeModule {
         return new Promise(async (resolve, reject) => {
             let entity = new BackupObject();
             entity.name = cmd.params.name.value;
-            entity.key = entity.name + '.gz';
+            entity.key = entity.name + ".gz";
             entity.type = BACKUP_TYPE.FILE;
 
             //assume relative path if path not given specifically
-            entity.path = (cmd.params.path == null) ?
-                "" :
-                cmd.params.path.value;
+            entity.path = cmd.params.path == null ? "" : cmd.params.path.value;
 
             await this.data.dataSource.save(entity);
 
             //zip file, passing in a data object containing path to file and its name
-            zipFile(entity).then(_ => {
-                    PAILogger.info('Finished zipping file.')
+            zipFile(entity)
+                .then(_ => {
+                    PAILogger.info("Finished zipping file.");
                     //store a local backup or not
-                    let keepLocalCopy = (cmd.params.keepLocalCopy == null) ?
+                    let keepLocalCopy =
+                        cmd.params.keepLocalCopy == null ?
                         "false" :
                         cmd.params.keepLocalCopy.value;
                     //send to S3
                     let result = uploadToS3(entity, keepLocalCopy);
                     resolve(result);
                 })
-                .catch((err) => {
-                    PAILogger.info('Error while zipping file: ' + err);
-                });;
-        }).catch((err) => {
-            PAILogger.info('Error during backup: ' + err);
+                .catch(err => {
+                    PAILogger.info("Error while zipping file: " + err);
+                });
+        }).catch(err => {
+            PAILogger.info("Error during backup: " + err);
         });
     }
 
@@ -269,31 +324,34 @@ class PCM_BACKUP extends PAICodeModule {
             let entity = new BackupObject();
             entity.path = cmd.params.path.value;
             //if name wasn't given in the pai-code params, take it from the path param
-            entity.name = (cmd.params.name == null) ?
+            entity.name =
+                cmd.params.name == null ?
                 path.basename(entity.path) :
                 cmd.params.name.value;
-            entity.key = entity.name + '.tgz';
+            entity.key = entity.name + ".tgz";
             entity.type = BACKUP_TYPE.DIRECTORY;
 
             await this.data.dataSource.save(entity);
 
             //zip directory, passing in the data object
             //containing path to the directory and the output name (entity.key)
-            zipDirectory(entity).then(_ => {
-                    PAILogger.info('Finished zipping directory.');
+            zipDirectory(entity)
+                .then(_ => {
+                    PAILogger.info("Finished zipping directory.");
                     //store a local backup or not, false by default
-                    let keepLocalCopy = (cmd.params.keepLocalCopy == null) ?
+                    let keepLocalCopy =
+                        cmd.params.keepLocalCopy == null ?
                         "false" :
                         cmd.params.keepLocalCopy.value;
                     //send to S3
                     let result = uploadToS3(entity, keepLocalCopy);
                     resolve(result);
                 })
-                .catch((err) => {
-                    PAILogger.info('Error while zipping directory: ' + err);
+                .catch(err => {
+                    PAILogger.info("Error while zipping directory: " + err);
                 });
-        }).catch((err) => {
-            PAILogger.info('Error during backup: ' + err);
+        }).catch(err => {
+            PAILogger.info("Error during backup: " + err);
         });
     }
 
@@ -315,8 +373,8 @@ class PCM_BACKUP extends PAICodeModule {
             //download object from S3
             let result = await downloadFromS3(entity);
             resolve(result);
-        }).catch((err) => {
-            PAILogger.info('Error during backup: ' + err);
+        }).catch(err => {
+            PAILogger.info("Error during backup: " + err);
         });
     }
 }
