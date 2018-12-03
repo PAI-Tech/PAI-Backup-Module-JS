@@ -17,8 +17,6 @@ class BackupObject extends PAIEntity {
         //path to parent directory (file) or path to directory (directory)
         this.path = null;
 
-        //type (file or directory)
-        this.type = BACKUP_TYPE.FILE;
     }
 
     setEntityName() {

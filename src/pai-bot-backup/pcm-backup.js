@@ -141,7 +141,6 @@ class PCM_BACKUP extends PAICodeModule {
             let entity = new BackupObject();
             entity.name = cmd.params.name.value;
             entity.key = entity.name + ".gz";
-            entity.type = BACKUP_TYPE.FILE;
 
             //assume relative path if path not given specifically
             entity.path = (cmd.params.path == null) ? "" : cmd.params.path.value;
@@ -189,7 +188,6 @@ class PCM_BACKUP extends PAICodeModule {
                 path.basename(entity.path) :
                 cmd.params.name.value;
             entity.key = entity.name + ".tgz";
-            entity.type = BACKUP_TYPE.DIRECTORY;
 
             await this.data.dataSource.save(entity);
 
