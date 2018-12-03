@@ -123,10 +123,7 @@ class PCM_BACKUP extends PAICodeModule {
                 }
             })
         );
-
-        await this.config.setConfigParam(CONFIG_S3_BUCKET, 'paibackupjs');
-        await this.config.setConfigParam(CONFIG_CREDENTIALS_PATH, './aws_config.json');
-
+        
     }
 
     setModuleName() {

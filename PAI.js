@@ -23,7 +23,14 @@ async function start() {
     let context = new PAICodeCommandContext("host", "HardCoded");
     
     //backup-file tests
-    let response = await PAICode.executeString(`pai-backup backup-file path:"test_data/file2.txt"`, context);
+    
+    await PAICode.executeString(`
+    pai-backup config param_name:"S3_BUCKET" param_value:"paibackupjs"
+    pai-backup config param_name:"S3_KEY" param_value:"./aws_config.json"
+    `, context);
+    
+    
+    let response = await PAICode.executeString(`pai-backup backup-file path:"test_data/catroon.png"`, context);
     //let response = await PAICode.executeString(`pai-backup backup-file name:"file3.txt" path:"` + __dirname + `/test_data/data/file3.txt"`, context);
     //let response = await PAICode.executeString(`pai-backup backup-file name:"backup03-12-18" path:"` + __dirname + `/test_data/data/file3.txt"`, context);
     //let response = await PAICode.executeString(`pai-backup backup-file path:"` + __dirname + `/test_data/data/file3.txt"`, context);
