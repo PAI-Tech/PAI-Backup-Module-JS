@@ -46,7 +46,7 @@ class ZipTools {
 
     /**
      * Zips a directory into a .tgz archive
-     * @param {BackupObject} entity = data object containing directory's path and name
+     * @param {BackupObject} backupObject = data object containing directory's path and name
      */
     static zipDirectory(backupObject) {
         return new Promise(async (resolve, reject) => {

@@ -18,15 +18,9 @@ const {
 const ZipTools = require("./util/zip-tools.js");
 const S3Tools = require("./util/S3-tools.js");
 
-const CONFIG_S3_BUCKET = "S3_BUCKET",
-    CONFIG_S3_ACCESS_KEY = "S3_KEY",
-    CONFIG_S3_SECRET_KEY = "S3_SECRET";
-
+let CONFIG_S3_BUCKET = "S3_BUCKET",
+    CONFIG_CREDENTIALS_PATH = "S3_KEY";
 const path = require("path");
-
-// AWS.config.update({
-//     region: "eu-central-1"
-// });
 
 class PCM_BACKUP extends PAICodeModule {
     constructor() {
@@ -39,15 +33,10 @@ class PCM_BACKUP extends PAICodeModule {
 
         this.config.schema = [
             //PAIModuleConfigParam(label, description, paramName, defaultValue)
-            // TODO: add configuration parameters
-            //security params ? i.e protecting keys for AWS
-
             new PAIModuleConfigParam("s3 bucket name", "enter your s3 bucket", CONFIG_S3_BUCKET),
-
+            new PAIModuleConfigParam("aws credentials file", "enter the path to your aws credentials", CONFIG_CREDENTIALS_PATH)
         ];
 
-        let entity = new BackupObject();
-        this.data.entities[entity.setEntityName()] = BackupObject;
     }
 
     /**
@@ -128,12 +117,16 @@ class PCM_BACKUP extends PAICodeModule {
                     path: new PAIModuleCommandParamSchema(
                         "path",
                         "path to store backup object",
-                        true,
+                        false,
                         "path to download backup object to"
                     )
                 }
             })
         );
+
+        await this.config.setConfigParam(CONFIG_S3_BUCKET, 'paibackupjs');
+        await this.config.setConfigParam(CONFIG_CREDENTIALS_PATH, './aws_config.json');
+
     }
 
     setModuleName() {
@@ -141,7 +134,6 @@ class PCM_BACKUP extends PAICodeModule {
     }
 
     /**
-     *
      * @param {PAICodeCommand} cmd
      */
     backupFile(cmd) {
@@ -162,7 +154,9 @@ class PCM_BACKUP extends PAICodeModule {
                 PAILogger.info("Finished zipping file.");
 
                 //upload to S3
-                await S3Tools.uploadToS3(entity);
+                let bucketName = await this.config.getConfigParam(CONFIG_S3_BUCKET);
+                let credentialsPath = await this.config.getConfigParam(CONFIG_CREDENTIALS_PATH);
+                await S3Tools.uploadToS3(entity, bucketName, credentialsPath);
                 PAILogger.info("Upload to S3 bucket successful. Key: " + entity.key);
 
                 //keep a local copy or not
@@ -177,6 +171,7 @@ class PCM_BACKUP extends PAICodeModule {
                 resolve();
             } catch (e) {
                 PAILogger.info("Error during backup: " + e);
+                reject(e)
             }
         });
     }
@@ -204,8 +199,10 @@ class PCM_BACKUP extends PAICodeModule {
                 await ZipTools.zipDirectory(entity);
                 PAILogger.info("Finished zipping directory.");
 
-                //send to S3
-                await S3Tools.uploadToS3(entity);
+                //upload to S3
+                let bucketName = await this.config.getConfigParam(CONFIG_S3_BUCKET);
+                let credentialsPath = await this.config.getConfigParam(CONFIG_CREDENTIALS_PATH);
+                await S3Tools.uploadToS3(entity, bucketName, credentialsPath);
                 PAILogger.info("Upload to S3 bucket successful. Key: " + entity.key);
 
                 //store a local backup or not, false by default
@@ -220,6 +217,7 @@ class PCM_BACKUP extends PAICodeModule {
                 resolve();
             } catch (err) {
                 PAILogger.info("Error during backup: " + err);
+                reject(err);
             };
         });
     }
@@ -231,20 +229,24 @@ class PCM_BACKUP extends PAICodeModule {
         return new Promise(async (resolve, reject) => {
             let entity = new BackupObject();
             entity.key = cmd.params.key.value;
-            // //if path wasn't given in the pai-code params, use this directory as a default
-            // entity.path = (cmd.params.path == null) ?
-            //     __dirname :
-            //     cmd.params.path.value;
-            entity.path = cmd.params.path.value;
+            //if path wasn't given in the pai-code params, use this directory as a default
+            entity.path = (cmd.params.path == null) ?
+                "./" :
+                cmd.params.path.value;
 
             await this.data.dataSource.save(entity);
 
             //download object from S3
-            await S3Tools.downloadFromS3(entity);
-            resolve();
+            let bucketName = await this.config.getConfigParam(CONFIG_S3_BUCKET);
+            let credentialsPath = await this.config.getConfigParam(CONFIG_CREDENTIALS_PATH);
 
-        }).catch(err => {
-            PAILogger.info("Error during download: " + err);
+            try {
+                await S3Tools.downloadFromS3(entity, bucketName, credentialsPath);
+                resolve();
+            } catch (e) {
+                PAILogger.info("Error during download: " + e);
+                reject(e);
+            }
         });
     }
 
