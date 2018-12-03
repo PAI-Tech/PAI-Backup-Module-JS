@@ -53,15 +53,15 @@ class PCM_BACKUP extends PAICodeModule {
                 params: {
                     name: new PAIModuleCommandParamSchema(
                         "name",
-                        "name of backup",
-                        true,
-                        "file name"
+                        "name of backup on S3",
+                        false,
+                        "name of backup object on S3"
                     ),
-                    //path to parent directory
+                    //path to file
                     path: new PAIModuleCommandParamSchema(
                         "path",
                         "path to file",
-                        false,
+                        true,
                         "file path",
                         ""
                     ),
@@ -82,9 +82,9 @@ class PCM_BACKUP extends PAICodeModule {
                 params: {
                     name: new PAIModuleCommandParamSchema(
                         "name",
-                        "name of backup",
+                        "name of backup on S3",
                         false,
-                        "directory name"
+                        "name of backup object on S3"
                     ),
                     //path to directory
                     path: new PAIModuleCommandParamSchema(
@@ -139,11 +139,13 @@ class PCM_BACKUP extends PAICodeModule {
     backupFile(cmd) {
         return new Promise(async (resolve, reject) => {
             let entity = new BackupObject();
-            entity.name = cmd.params.name.value;
+            entity.path = cmd.params.path.value;
+            //if name wasn't given in the pai-code params, take it from the path param
+            entity.name =
+                cmd.params.name == null ?
+                path.basename(entity.path) :
+                cmd.params.name.value;
             entity.key = entity.name + ".gz";
-
-            //assume relative path if path not given specifically
-            entity.path = (cmd.params.path == null) ? "" : cmd.params.path.value;
 
             await this.data.dataSource.save(entity);
 

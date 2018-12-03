@@ -19,9 +19,8 @@ class ZipTools {
      */
     static zipFile(backupObject) {
         return new Promise(async (resolve, reject) => {
-            const sourceFile = ((backupObject.path == "") || (backupObject.path == null)) ?
-                backupObject.name :
-                (backupObject.path + "/" + backupObject.name);
+            const sourceFile = backupObject.path;
+            const outputName = backupObject.key;
             PAILogger.info('Zipping file "' + sourceFile + '"');
 
             //check if file can be opened
@@ -33,7 +32,7 @@ class ZipTools {
                 .on("open", _ => {
                     //Create the archive
                     const gzip = zlib.createGzip();
-                    const output = fs.createWriteStream(backupObject.key);
+                    const output = fs.createWriteStream(outputName);
                     input.pipe(gzip)
                         .pipe(output)
                         .on("finish", err => {
