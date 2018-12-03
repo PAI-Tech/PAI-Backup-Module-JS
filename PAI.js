@@ -23,15 +23,14 @@ async function start() {
     let context = new PAICodeCommandContext("host", "HardCoded");
     
     //backup-file tests
-    //let response = await PAICode.executeString(`pai-backup backup-file path:"file2.txt"`, context);
-    //let response = await PAICode.executeString(`pai-backup backup-file path:"./file2.txt"`, context);
-    //let response = await PAICode.executeString(`pai-backup backup-file name:"file3.txt" path:"` + __dirname + `/data/file3.txt"`, context);
-    //let response = await PAICode.executeString(`pai-backup backup-file name:"backup03-12-18" path:"` + __dirname + `/data/file3.txt"`, context);
-    //let response = await PAICode.executeString(`pai-backup backup-file path:"` + __dirname + `/data/file3.txt"`, context);
+    let response = await PAICode.executeString(`pai-backup backup-file path:"test_data/file2.txt"`, context);
+    //let response = await PAICode.executeString(`pai-backup backup-file name:"file3.txt" path:"` + __dirname + `/test_data/data/file3.txt"`, context);
+    //let response = await PAICode.executeString(`pai-backup backup-file name:"backup03-12-18" path:"` + __dirname + `/test_data/data/file3.txt"`, context);
+    //let response = await PAICode.executeString(`pai-backup backup-file path:"` + __dirname + `/test_data/data/file3.txt"`, context);
     
     //backup-directory tests
-    //let response = await PAICode.executeString(`pai-backup backup-directory name:"data" path:"` + __dirname + `/data"`, context);
-    //let response = await PAICode.executeString(`pai-backup backup-directory path:"` + __dirname + `/data"`, context);
+    //let response = await PAICode.executeString(`pai-backup backup-directory name:"data" path:"` + __dirname + `/test_data/data"`, context);
+    //let response = await PAICode.executeString(`pai-backup backup-directory path:"` + __dirname + `/test_data/data"`, context);
 
     //download-backup tests
     //let response = await PAICode.executeString(`pai-backup download-backup key:"file2.txt.gz" path:"` + __dirname + `"`, context);
@@ -39,13 +38,13 @@ async function start() {
     //let response = await PAICode.executeString(`pai-backup download-backup key:"data.tgz"`, context);
 
     //keepLocalCopy param tests
-    //let response = await PAICode.executeString(`pai-backup backup-file path:"file2.txt" keepLocalCopy:"true"`, context);
-    //let response = await PAICode.executeString(`pai-backup backup-file path:"file2.txt" keepLocalCopy:"false"`, context);
-    //let response = await PAICode.executeString(`pai-backup backup-directory name:"data" path:"` + __dirname + `/data" keepLocalCopy:"true"`, context);
-    //let response = await PAICode.executeString(`pai-backup backup-directory name:"data" path:"` + __dirname + `/data" keepLocalCopy:"false"`, context);
+    //let response = await PAICode.executeString(`pai-backup backup-file path:"test_data/file2.txt" keepLocalCopy:"true"`, context);
+    //let response = await PAICode.executeString(`pai-backup backup-file path:"test_data/file2.txt" keepLocalCopy:"false"`, context);
+    //let response = await PAICode.executeString(`pai-backup backup-directory name:"data" path:"` + __dirname + `/test_data/data" keepLocalCopy:"true"`, context);
+    //let response = await PAICode.executeString(`pai-backup backup-directory name:"data" path:"` + __dirname + `/test_data/data" keepLocalCopy:"false"`, context);
 
     //error handling & edge case testing:
-    //let response = await PAICode.executeString(`pai-backup backup-file name:"p.txt" path:"data/p.txt"`);
+    //let response = await PAICode.executeString(`pai-backup backup-file name:"p.txt" path:"test_data/p.txt"`);
     //let response = await PAICode.executeString(`pai-backup backup-file name:"file3.txt" path:"datap"`);
     //let response = await PAICode.executeString(`pai-backup backup-directory name:"" path:"/notarealdirectory"`)
     //let response = await PAICode.executeString(`pai-backup backup-directory name:"data" keepLocalCopy:"true"`, context);
