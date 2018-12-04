@@ -10,9 +10,9 @@ AWS.config.update({
 });
 
 /**
- * Upload/Download and other functions used when interacting with AWS S3
+ * Upload/Download and other functions used when interacting with a service provider (i.e AWS S3)
  */
-class S3Tools {
+class BackupService {
     
     /**
      * Creates a file stream and then uploads it to S3. objectName could be a
@@ -88,7 +88,28 @@ class S3Tools {
         });
         return s3Promise;
     }
+
+
+    /**
+     * 
+     * @param {*} backupObject 
+     * @param {*} cdnKey 
+     */
+    static downloadFromHTTP(backupObject, cdnKey) {
+
+
+    }
+
+    /**
+     * 
+     * @param {*} backupObject 
+     */
+    static uploadToHTTP(backupObject) {
+
+
+    }
+
 }
 
 
-module.exports = S3Tools;
+module.exports = BackupService;

@@ -16,10 +16,12 @@ const {
 } = require("./src/model/backup-object");
 
 const ZipTools = require("./util/zip-tools.js");
-const S3Tools = require("./util/S3-tools.js");
+const BackupService = require("./util/backup-service.js");
 
+
+let CONFIG_BACKUP_SERVICE = "BACKUP_SERVICE";
 let CONFIG_S3_BUCKET = "S3_BUCKET",
-    CONFIG_CREDENTIALS_PATH = "S3_KEY";
+    CONFIG_CREDENTIALS_PATH = "S3_CREDENTIALS_PATH";
 const path = require("path");
 
 class PCM_BACKUP extends PAICodeModule {
@@ -27,6 +29,7 @@ class PCM_BACKUP extends PAICodeModule {
         let infoText = `
         Welcome to PAI Backup:
         This module allows a file/directory to be sent to the cloud for secure backup.
+        Current available services: AWS S3, HTTP (PAI)
         `;
 
         super(infoText);
@@ -34,9 +37,10 @@ class PCM_BACKUP extends PAICodeModule {
         this.config.schema = [
             //PAIModuleConfigParam(label, description, paramName, defaultValue)
             new PAIModuleConfigParam("s3 bucket name", "enter your s3 bucket", CONFIG_S3_BUCKET),
-            new PAIModuleConfigParam("aws credentials file", "enter the path to your aws credentials", CONFIG_CREDENTIALS_PATH)
-        ];
+            new PAIModuleConfigParam("aws credentials file", "enter the path to your aws credentials", CONFIG_CREDENTIALS_PATH),
 
+            new PAIModuleConfigParam("backup service", "enter the service to be used for backup", CONFIG_BACKUP_SERVICE)
+        ];
     }
 
     /**
@@ -154,7 +158,7 @@ class PCM_BACKUP extends PAICodeModule {
                 //upload to S3
                 let bucketName = await this.config.getConfigParam(CONFIG_S3_BUCKET);
                 let credentialsPath = await this.config.getConfigParam(CONFIG_CREDENTIALS_PATH);
-                await S3Tools.uploadToS3(entity, bucketName, credentialsPath);
+                await BackupService.uploadToS3(entity, bucketName, credentialsPath);
                 PAILogger.info("Upload to S3 bucket successful. Key: " + entity.key);
 
                 //keep a local copy or not
@@ -166,7 +170,7 @@ class PCM_BACKUP extends PAICodeModule {
                     await ZipTools.deleteFromLocal(entity.key);
                     PAILogger.info("Local copy deleted");
                 }
-                resolve();
+                resolve("Backup complete.");
             } catch (e) {
                 PAILogger.info("Error during backup: " + e);
                 reject(e)
@@ -199,7 +203,7 @@ class PCM_BACKUP extends PAICodeModule {
                 //upload to S3
                 let bucketName = await this.config.getConfigParam(CONFIG_S3_BUCKET);
                 let credentialsPath = await this.config.getConfigParam(CONFIG_CREDENTIALS_PATH);
-                await S3Tools.uploadToS3(entity, bucketName, credentialsPath);
+                await BackupService.uploadToS3(entity, bucketName, credentialsPath);
                 PAILogger.info("Upload to S3 bucket successful. Key: " + entity.key);
 
                 //store a local backup or not, false by default
@@ -211,7 +215,7 @@ class PCM_BACKUP extends PAICodeModule {
                     await ZipTools.deleteFromLocal(entity.key);
                     PAILogger.info("Local copy deleted");
                 }
-                resolve();
+                resolve("Backup complete.");
             } catch (err) {
                 PAILogger.info("Error during backup: " + err);
                 reject(err);
@@ -238,8 +242,8 @@ class PCM_BACKUP extends PAICodeModule {
             let credentialsPath = await this.config.getConfigParam(CONFIG_CREDENTIALS_PATH);
 
             try {
-                await S3Tools.downloadFromS3(entity, bucketName, credentialsPath);
-                resolve();
+                await BackupService.downloadFromS3(entity, bucketName, credentialsPath);
+                resolve("Download successful.");
             } catch (e) {
                 PAILogger.info("Error during download: " + e);
                 reject(e);
