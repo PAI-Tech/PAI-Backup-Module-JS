@@ -22,12 +22,22 @@ async function start() {
 
     let context = new PAICodeCommandContext("host", "HardCoded");
     
-    //config execution
+    //HTTP_PAI config execution
     await PAICode.executeString(`
-        pai-backup config param_name:"BACKUP_SERVICE" param_value:"S3"
-        pai-backup config param_name:"S3_BUCKET_ID" param_value:"paibackupjs"
-        pai-backup config param_name:"S3_CREDENTIALS_PATH" param_value:"./aws_config.json"
+        pai-backup config param_name:"BACKUP_SERVICE" param_value:"HTTP_PAI"
+        pai-backup config param_name:"PAI_HTTP_URl" param_value:"http://localhost:3000/add-file"
     `, context);
+
+
+    let response = await PAICode.executeString(`pai-backup backup-file name:"file2.txt" path:"test_data/file2.txt"`);
+
+
+    //S3 config execution
+    // await PAICode.executeString(`
+    //     pai-backup config param_name:"BACKUP_SERVICE" param_value:"S3"
+    //     pai-backup config param_name:"S3_BUCKET" param_value:"paibackupjs"
+    //     pai-backup config param_name:"S3_CREDENTIALS_PATH" param_value:"./aws_config.json"
+    // `, context);
     
 
     //backup-file tests
@@ -41,7 +51,7 @@ async function start() {
     //let response = await PAICode.executeString(`pai-backup backup-directory path:"` + __dirname + `/test_data/data"`, context);
 
     //download-backup tests
-    let response = await PAICode.executeString(`pai-backup download-backup key:"file2.txt.gz" path:"` + __dirname + `"`, context);
+    //let response = await PAICode.executeString(`pai-backup download-backup key:"file2.txt.gz" path:"` + __dirname + `"`, context);
     //let response = await PAICode.executeString(`pai-backup download-backup key:"data.tgz" path:"` + __dirname + `"`, context);
     //let response = await PAICode.executeString(`pai-backup download-backup key:"data.tgz"`, context);
 

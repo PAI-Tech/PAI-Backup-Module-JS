@@ -18,11 +18,17 @@ const {
 const ZipTools = require("./util/zip-tools.js");
 const BackupService = require("./util/backup-service.js");
 
+const path = require("path");
 
+//service param: "HTTP_POST_PAI" / "S3"
 let CONFIG_BACKUP_SERVICE = "BACKUP_SERVICE";
+
+//S3 params
 let CONFIG_S3_BUCKET = "S3_BUCKET",
     CONFIG_CREDENTIALS_PATH = "S3_CREDENTIALS_PATH";
-const path = require("path");
+
+//HTTP params
+let CONFIG_PAI_HTTP_URl = "PAI_HTTP_URl";
 
 class PCM_BACKUP extends PAICodeModule {
     constructor() {
@@ -155,11 +161,21 @@ class PCM_BACKUP extends PAICodeModule {
                 await ZipTools.zipFile(entity);
                 PAILogger.info("Finished zipping file.");
 
-                //upload to S3
-                let bucketName = await this.config.getConfigParam(CONFIG_S3_BUCKET);
-                let credentialsPath = await this.config.getConfigParam(CONFIG_CREDENTIALS_PATH);
-                await BackupService.uploadToS3(entity, bucketName, credentialsPath);
-                PAILogger.info("Upload to S3 bucket successful. Key: " + entity.key);
+                //branch based on the chosen backup service
+                let backupService = await this.config.getConfigParam(CONFIG_BACKUP_SERVICE);
+                let response = "";
+                if (backupService === "S3") {
+                    //upload to S3
+                    let bucketName = await this.config.getConfigParam(CONFIG_S3_BUCKET);
+                    let credentialsPath = await this.config.getConfigParam(CONFIG_CREDENTIALS_PATH);
+                    await BackupService.uploadToS3(entity, bucketName, credentialsPath);
+                    PAILogger.info("Upload to S3 bucket successful. Key: " + entity.key);
+                } else if (backupService === "HTTP_PAI") {
+                    //send to PAI
+                    let url = await this.config.getConfigParam(CONFIG_PAI_HTTP_URl);
+                    response = await BackupService.postHTTP(entity, url);
+                    PAILogger.info("Upload to PAI File Service successful. CDN Key: " + response);
+                }
 
                 //keep a local copy or not
                 let keepLocalCopy =

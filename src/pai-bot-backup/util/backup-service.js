@@ -1,6 +1,8 @@
 const AWS = require("aws-sdk");
 const fs = require("fs");
 
+const request = require("request");
+
 const {
     PAILogger
 } = require('@pai-tech/pai-code');
@@ -92,22 +94,39 @@ class BackupService {
 
     /**
      * 
-     * @param {*} backupObject 
-     * @param {*} cdnKey 
+     * @param {BackupObject} backupObject = object to be uploaded
+     * @param {String} url = url (with endpoint) to send request incl. file
      */
-    static downloadFromHTTP(backupObject, cdnKey) {
+    static postHTTP(backupObject, paiURL) {
+        let cdn_key = "";
+        let formData = {
+            "pai_file" : fs.createReadStream(backupObject.key)
+        };
 
-
+        return new Promise(async (resolve, reject) => {
+            request.post({url : paiURL, formData : formData}, (err, httpResponse, body) => {
+                if (err) {
+                    PAILogger.info('Upload failed: ' + err);
+                    reject(err);
+                }
+                PAILogger.info('Upload via HTTP POST successful');
+                //console.log(body);
+                cdn_key = JSON.parse(body)["cdn_key"]; 
+                resolve(cdn_key);
+            });
+        });
     }
 
     /**
      * 
-     * @param {*} backupObject 
+     * @param {BackupObject} backupObject = object to be downloaded
+     * @param {String} cdnKey = key to include in request to reference file on the server 
      */
-    static uploadToHTTP(backupObject) {
+    static getHTTP(backupObject, cdnKey) {
 
 
     }
+
 
 }
 
