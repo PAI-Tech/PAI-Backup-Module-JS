@@ -25,11 +25,11 @@ async function start() {
     //HTTP_PAI config execution
     await PAICode.executeString(`
         pai-backup config param_name:"BACKUP_SERVICE" param_value:"HTTP_PAI"
-        pai-backup config param_name:"PAI_HTTP_URl" param_value:"http://localhost:3000/add-file"
+        pai-backup config param_name:"PAI_HTTP_URl" param_value:"http://localhost:3000"
     `, context);
 
-
-    let response = await PAICode.executeString(`pai-backup backup-file name:"file2.txt" path:"test_data/file2.txt"`);
+    //let response = await PAICode.executeString(`pai-backup backup-file name:"file2.txt" path:"test_data/file2.txt"`);
+    let response = await PAICode.executeString(`pai-backup download-backup key:"e2831841-8768-413e-8a63-d57b41e8df23"`, context);
 
 
     //S3 config execution

@@ -2,6 +2,7 @@ const AWS = require("aws-sdk");
 const fs = require("fs");
 
 const request = require("request");
+const contentDisposition = require("content-disposition");
 
 const {
     PAILogger
@@ -97,14 +98,14 @@ class BackupService {
      * @param {BackupObject} backupObject = object to be uploaded
      * @param {String} url = url (with endpoint) to send request incl. file
      */
-    static postHTTP(backupObject, paiURL) {
+    static postHTTP(backupObject, url) {
         let cdn_key = "";
         let formData = {
             "pai_file" : fs.createReadStream(backupObject.key)
         };
 
         return new Promise(async (resolve, reject) => {
-            request.post({url : paiURL, formData : formData}, (err, httpResponse, body) => {
+            request.post({url : url, formData : formData}, (err, httpResponse, body) => {
                 if (err) {
                     PAILogger.info('Upload failed: ' + err);
                     reject(err);
@@ -118,16 +119,31 @@ class BackupService {
     }
 
     /**
-     * 
-     * @param {BackupObject} backupObject = object to be downloaded
-     * @param {String} cdnKey = key to include in request to reference file on the server 
+     *
+     * @param {BackupObject} backupObject = object to be downloaded (requires backupObject.key is a cdn key)
+     * @param {String} url = url (with endpoint) to send request incl. cdn key
      */
-    static getHTTP(backupObject, cdnKey) {
-
-
+    static getHTTP(backupObject, url) {
+        const cdnKey = backupObject.key;
+        const downloadPath = backupObject.path;
+        return new Promise( async (resolve, reject) => {
+            const req = request.get(url + '?cdn_key=' + cdnKey)
+                .on('error', function(err) {
+                    PAILogger.info(err);
+                    reject(err);
+                })
+                .on('response', function (res) {
+                    console.log(contentDisposition.parse(res.headers["content-disposition"]).parameters.filename);
+                    if (res.statusCode === 200) {
+                        req.pipe(fs.createWriteStream(
+                            downloadPath + "/" + 
+                            contentDisposition.parse(res.headers["content-disposition"]).parameters.filename));
+                        PAILogger.info(`Object with cdn_key "${cdnKey}" downloaded to ${downloadPath} successfully`);
+                        resolve("Object downloaded successfully.");
+                    }
+                });
+        });
     }
-
-
 }
 
 

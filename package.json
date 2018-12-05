@@ -16,7 +16,8 @@
     "aws-sdk": "^2.361.0",
     "tar": "^4.4.8",
     "zlib": "^1.0.5",
-    "request": "2.88.0"
+    "request": "2.88.0",
+    "content-disposition": "0.5.2"
   },
   "devDependencies": {
     "@pai-tech/pai-bot": "^1.0.14"
