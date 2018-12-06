@@ -1,6 +1,7 @@
 const AWS = require("aws-sdk");
 const fs = require("fs");
 
+const http = require("http");
 const request = require("request");
 const contentDisposition = require("content-disposition");
 
@@ -100,18 +101,36 @@ class BackupService {
      */
     static postHTTP(backupObject, url) {
         let cdn_key = "";
+        let fileStream = fs.createReadStream(backupObject.key);
+        fileStream.on("error", err => {
+            PAILogger.info("Error reading file/directory", err);
+        });
         let formData = {
-            "pai_file" : fs.createReadStream(backupObject.key)
+            'pai_file' : fileStream
         };
+        let options = {
+            preambleCRLF: true,
+            postambleCRLF: true,        
+            headers: {
+                'Content-Type': 'multipart/form-data',
+                'Accept-Charset':  'utf-8',
+                'cache-control' : 'no-cache',
+                'Accept-Encoding' : 'gzip, deflate',
+                'Accept' : '*/*',
+                'Connection' : 'keep-alive',
+            }
+        };
+        console.log(JSON.stringify(options));
 
         return new Promise(async (resolve, reject) => {
-            request.post({url : url, formData : formData}, (err, httpResponse, body) => {
+            PAILogger.info(`Uploading object ${backupObject.key}`);
+            request.post({url: url, formData : formData, options : options}, (err, httpResponse, body) => {
                 if (err) {
                     PAILogger.info('Upload failed: ' + err);
                     reject(err);
                 }
                 PAILogger.info('Upload via HTTP POST successful');
-                //console.log(body);
+                console.log(body);
                 cdn_key = JSON.parse(body)["cdn_key"]; 
                 resolve(cdn_key);
             });

@@ -216,11 +216,20 @@ class PCM_BACKUP extends PAICodeModule {
                 await ZipTools.zipDirectory(entity);
                 PAILogger.info("Finished zipping directory.");
 
-                //upload to S3
-                let bucketName = await this.config.getConfigParam(CONFIG_S3_BUCKET);
-                let credentialsPath = await this.config.getConfigParam(CONFIG_CREDENTIALS_PATH);
-                await BackupService.uploadToS3(entity, bucketName, credentialsPath);
-                PAILogger.info("Upload to S3 bucket successful. Key: " + entity.key);
+                //branch based on the chosen backup service
+                let backupService = await this.config.getConfigParam(CONFIG_BACKUP_SERVICE);
+                if (backupService === "S3") {
+                    //upload to S3
+                    let bucketName = await this.config.getConfigParam(CONFIG_S3_BUCKET);
+                    let credentialsPath = await this.config.getConfigParam(CONFIG_CREDENTIALS_PATH);
+                    await BackupService.uploadToS3(entity, bucketName, credentialsPath);
+                    PAILogger.info("Upload to S3 bucket successful. Key: " + entity.key);
+                } else if (backupService === "HTTP_PAI") {
+                    //send to PAI
+                    let url = await this.config.getConfigParam(CONFIG_PAI_HTTP_URl) + "/add-file";
+                    await BackupService.postHTTP(entity, url);
+                    PAILogger.info("Upload to PAI File Service successful. CDN Key: " + response);
+                }
 
                 //store a local backup or not, false by default
                 let keepLocalCopy =
@@ -256,7 +265,6 @@ class PCM_BACKUP extends PAICodeModule {
             try {
                 //branch based on the chosen backup service
                 let backupService = await this.config.getConfigParam(CONFIG_BACKUP_SERVICE);
-                let response = "";
                 if (backupService === "S3") {                
                     //download object from S3
                     let bucketName = await this.config.getConfigParam(CONFIG_S3_BUCKET);
@@ -265,7 +273,7 @@ class PCM_BACKUP extends PAICodeModule {
                 } else if (backupService === "HTTP_PAI") {
                     //get from PAI
                     let url = await this.config.getConfigParam(CONFIG_PAI_HTTP_URl) + "/get-file";
-                    response = await BackupService.getHTTP(entity, url);
+                    await BackupService.getHTTP(entity, url);
                     PAILogger.info("Download from PAI File Service successful");
                 }
                 resolve("Download complete.");
