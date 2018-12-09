@@ -1,37 +1,44 @@
 # PAI Backup Module
 
-#### Welcome to PAI Backup:
-##### This module allows a file/directory to be sent to the cloud for secure backup.
+### Welcome to PAI Backup:
+This module allows a file/directory to be sent to the cloud for secure backup.
 
-#### Current available services: 
+### Current available services: 
 - AWS (S3) cloud storage
-- PAI (HTTP) file service.
+- PAI (HTTP) file service
 
 
-### ---AWS S3 CONFIG---
+### AWS S3 Config
 1. Configure the module to point to this service by running:
+
         ```pai-backup config param_name:"BACKUP_SERVICE" param_value:"S3"```
 
 2. Specify a JSON credentials file with the AWS keys to be used for accessing S3.
+
         ```pai-backup config param_name:"S3_CREDENTIALS_PATH" param_value:"./aws_config.json"```
     The JSON file should follow this format:
+
         ```{ "accessKeyId": "XXXXXXXXXXXXX", "secretAccessKey": "XXXXXXXXXXXXX", "region": "region-id" }```
+
     (See https://docs.aws.amazon.com/sdk-for-javascript/v2/developer-guide/loading-node-credentials-json-file.html for more information)
 
     3/ Specify a bucket to be used for upload (with access permissions from the keys specified above)
+
         ```pai-backup config param_name:"S3_BUCKET" param_value:"paibackupjs"```
     
 
 
-### ---PAI HTTP CONFIG---
+### PAI HTTP Config
 1.  Configure the module to point to this serfvice by running:
+
         ```pai-backup config param_name:"BACKUP_SERVICE" param_value:"PAI_HTTP"```
 
 2.  Specify the base URL for PAI's File Service. For example, 
+
         ```pai-backup config param_name:"PAI_HTTP_URl" param_value:"http://localhost:3000"```
 
 
-### ---USING THE MODULE---
+### Using the Module
     There are three available commands in the pai-backup module.
 
 1. To backup a file, use the 'backup-file' command with the following parameters:
