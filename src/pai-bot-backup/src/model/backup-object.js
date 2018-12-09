@@ -24,14 +24,6 @@ class BackupObject extends PAIEntity {
     }
 }
 
-
-const BACKUP_TYPE = {
-    FILE: "FILE",
-    DIRECTORY: "DIRECTORY"
-};
-
-
 module.exports = {
     BackupObject,
-    BACKUP_TYPE
 };

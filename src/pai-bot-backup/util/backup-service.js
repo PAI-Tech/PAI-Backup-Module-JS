@@ -93,28 +93,32 @@ class BackupService {
         return s3Promise;
     }
 
-
     /**
-     * 
+     * Takes a full url and submits the object via HTTP 
+     * as a stream body of a POST request.
      * @param {BackupObject} backupObject = object to be uploaded
      * @param {String} url = url (with endpoint) to send request incl. file
      */
     static postHTTP(backupObject, url) {
+        //Read in file
         let fileStream = fs.createReadStream(backupObject.key);
         fileStream.on("error", err => {
             PAILogger.info("Error reading file/directory", err);
             return Promise.reject(err);
         });
         return new Promise(async (resolve, reject) => {
+            //Prepare the request body
             let form = new FormData();
             form.append('pai_file', fileStream);
             PAILogger.info(`Uploading object ${backupObject.key}`);
+            //POST request
             axios.post(
                 url,
                 form,
                 { headers : form.getHeaders() }
             ).then ( response => {
                 PAILogger.info('Upload via HTTP POST successful');
+                //Record the cdn_key in the JSON response
                 resolve(response.data['cdn_key']);
             }).catch( error => {
                 PAILogger.info('Upload failed: ' + error);
@@ -124,32 +128,39 @@ class BackupService {
     }
 
     /**
-     *
+     * Takes a full url (with endpoint and parameter query) and writes the server response 
+     * body to a file stream (with a specified path).
      * @param {BackupObject} backupObject = object to be downloaded (requires backupObject.key is a cdn key)
      * @param {String} url = url (with endpoint) to send request incl. cdn key
      */
     static getHTTP(backupObject, url) {
-        const cdnKey = backupObject.key;
-        const downloadPath = backupObject.path;
         return new Promise( async (resolve, reject) => {
+            //GET request
             axios({
                 method:'get',
-                url: url  + '?cdn_key=' + cdnKey,
+                url: url,
                 responseType:'stream',
-                timeout : 1000
+                timeout : 60000
             })
-            .then((response) => {
-                let filename = contentDisposition.parse(response.headers["content-disposition"]).parameters.filename;
-                response.data.pipe(fs.createWriteStream(downloadPath + "/" + filename));
-                PAILogger.info(`Object with cdn_key "${cdnKey}" downloaded to ${downloadPath} successfully`);
+            .then(response => {
+                //get filename from the content disposition header
+                let filename = contentDisposition.parse(
+                    response.headers["content-disposition"]
+                ).parameters.filename;
+                //write to file
+                response.data.pipe(
+                    fs.createWriteStream(backupObject.path + "/" + filename)
+                );
+                PAILogger.info(
+                    `Object with cdn_key "${backupObject.key}" downloaded to ${backupObject.path} successfully`
+                );
                 resolve("Object downloaded successfully.");
-            }).catch ( (err) => {
+            }).catch(err => {
                 PAILogger.info(err);
                 reject(err);
             });
         });
     }
 }
-
 
 module.exports = BackupService;
