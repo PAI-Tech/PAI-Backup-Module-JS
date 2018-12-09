@@ -42,7 +42,7 @@ This module allows a file/directory to be sent to the cloud for secure backup.
 ### Using the Module
 There are three available commands in the pai-backup module.
 
-1. To backup a file, use the ``backup-file`` command with the following parameters:
+1. To backup a file, use the **``backup-file``** command with the following parameters:
 
     ``path`` : An absolute or relative path to the file to be backed up. The file will be zipped into a .gz format
 
@@ -50,7 +50,7 @@ There are three available commands in the pai-backup module.
 
     (optional) ``keepLocalCopy [true/false]`` : Whether or not to save the zipped file locally (in addition to remotely). False by default.
 
-2.  To backup a directory, use the ``backup-directory`` command with the following parameters:
+2.  To backup a directory, use the **``backup-directory``** command with the following parameters:
 
     ``path`` : An absolute or relative path to the directory to be backed up. The directory will be zipped into a .tgz format
 
@@ -58,7 +58,7 @@ There are three available commands in the pai-backup module.
         
     (optional) ``keepLocalCopy [true/false]`` : Whether or not to save the zipped directory locally (in addition to remotely). False by default.
 
-3.  To download a backup, use the ``download-backup`` command with the following parameters.
+3.  To download a backup, use the **``download-backup``** command with the following parameters.
 
     ``key`` : For **S3**, use the name of the zipped file stored on S3 (for example 'Backup31-01-2019.tgz' for a zipped directory with the name 'Backup31-01-2019'). For **PAI HTTP**, use the 'cdn_key' returned when the upload was originally done.
 
