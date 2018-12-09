@@ -227,7 +227,7 @@ class PCM_BACKUP extends PAICodeModule {
                 } else if (backupService === "HTTP_PAI") {
                     //send to PAI
                     let url = await this.config.getConfigParam(CONFIG_PAI_HTTP_URl) + "/add-file";
-                    await BackupService.postHTTP(entity, url);
+                    let response = await BackupService.postHTTP(entity, url);
                     PAILogger.info("Upload to PAI File Service successful. CDN Key: " + response);
                 }
 

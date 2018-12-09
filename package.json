@@ -17,7 +17,9 @@
     "tar": "^4.4.8",
     "zlib": "^1.0.5",
     "request": "2.88.0",
-    "content-disposition": "0.5.2"
+    "content-disposition": "0.5.2",
+    "axios": "0.18.0",
+    "form-data": "2.3.3"
   },
   "devDependencies": {
     "@pai-tech/pai-bot": "^1.0.14"

@@ -4,6 +4,8 @@ const fs = require("fs");
 const http = require("http");
 const request = require("request");
 const contentDisposition = require("content-disposition");
+const axios = require("axios");
+const FormData = require("form-data");
 
 const {
     PAILogger
@@ -105,34 +107,21 @@ class BackupService {
         fileStream.on("error", err => {
             PAILogger.info("Error reading file/directory", err);
         });
-        let formData = {
-            'pai_file' : fileStream
-        };
-        let options = {
-            preambleCRLF: true,
-            postambleCRLF: true,        
-            headers: {
-                'Content-Type': 'multipart/form-data',
-                'Accept-Charset':  'utf-8',
-                'cache-control' : 'no-cache',
-                'Accept-Encoding' : 'gzip, deflate',
-                'Accept' : '*/*',
-                'Connection' : 'keep-alive',
-            }
-        };
-        console.log(JSON.stringify(options));
-
         return new Promise(async (resolve, reject) => {
             PAILogger.info(`Uploading object ${backupObject.key}`);
-            request.post({url: url, formData : formData, options : options}, (err, httpResponse, body) => {
-                if (err) {
-                    PAILogger.info('Upload failed: ' + err);
-                    reject(err);
-                }
+            let form = new FormData();
+            form.append('pai_file', fileStream);
+            axios.post(
+                url,
+                form,
+                { headers : form.getHeaders() }
+            ).then ( (response) => {
                 PAILogger.info('Upload via HTTP POST successful');
-                console.log(body);
-                cdn_key = JSON.parse(body)["cdn_key"]; 
-                resolve(cdn_key);
+                console.log(response.data['cdn_key']);
+                resolve(response.data['cdn_key']); 
+            }).catch( (error) => {
+                PAILogger.info('Upload failed: ' + error);
+                reject(error);
             });
         });
     }
