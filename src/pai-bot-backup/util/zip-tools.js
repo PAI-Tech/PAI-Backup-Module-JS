@@ -9,10 +9,13 @@ const {
 } = require('@pai-tech/pai-code');
 
 /**
- * Various helper functions for preparing files 
- * pre-backup. (i.e compressing/zipping)
+ * Various helper functions for preparing files pre-backup 
+ * (compressing/zipping/deleting).
+ *
+ * Author: Benedict Gattas (@P0ntiff)
  */
 class ZipTools {
+
     /**
      * Zips a file into a .gz compressed file.
      * @param {BackupObject} backupObject = data object containing file's path and name

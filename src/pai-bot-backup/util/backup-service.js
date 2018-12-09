@@ -1,20 +1,18 @@
-const AWS = require("aws-sdk");
 const fs = require("fs");
-
+const AWS = require("aws-sdk");
 const contentDisposition = require("content-disposition");
 const axios = require("axios");
 const FormData = require("form-data");
 
-const {
-    PAILogger
-} = require('@pai-tech/pai-code');
+const { PAILogger } = require('@pai-tech/pai-code');
 
-AWS.config.update({
-    region: "eu-central-1"
-});
+AWS.config.update({ region: "eu-central-1" });
 
 /**
- * Upload/Download and other functions used when interacting with a service provider (i.e AWS S3)
+ * Upload/download methods and other util functions used when interacting 
+ * with a service provider (i.e AWS S3).
+ * 
+ * Author: Benedict Gattas (@P0ntiff)
  */
 class BackupService {
     
@@ -117,9 +115,14 @@ class BackupService {
                 form,
                 { headers : form.getHeaders() }
             ).then ( response => {
+                //Record the cdn_key given in the JSON response
+                let cdn_key = response.data['cdn_key'];
+                if (cdn_key == null || cdn_key == undefined) {
+                    throw new Error('Could not decode server response');
+                }
+                resolve(cdn_key);
                 PAILogger.info('Upload via HTTP POST successful');
-                //Record the cdn_key in the JSON response
-                resolve(response.data['cdn_key']);
+
             }).catch( error => {
                 PAILogger.info('Upload failed: ' + error);
                 reject(error);
@@ -140,22 +143,36 @@ class BackupService {
                 method:'get',
                 url: url,
                 responseType:'stream',
-                timeout : 60000
+                timeout : 2000
             })
             .then(response => {
                 //get filename from the content disposition header
-                let filename = contentDisposition.parse(
-                    response.headers["content-disposition"]
-                ).parameters.filename;
+                let fileName = "";
+                try { 
+                    fileName = contentDisposition.parse(
+                        response.headers["content-disposition"]
+                    ).parameters.filename;
+                } catch (e) {
+                    PAILogger.info('Could not decode server response.');
+                    throw e;
+                }
                 //write to file
-                response.data.pipe(
-                    fs.createWriteStream(backupObject.path + "/" + filename)
-                );
+                let downloadPath = backupObject.path + fileName;
+                try {
+                    response.data.pipe(
+                        fs.createWriteStream(downloadPath)
+                    );
+                } catch (e) {
+                    PAILogger.info('Could not write downloaded object to ' + downloadPath)
+                }
                 PAILogger.info(
-                    `Object with cdn_key "${backupObject.key}" downloaded to ${backupObject.path} successfully`
+                    `Object '${fileName}' with cdn_key '${backupObject.key}' downloaded to ${backupObject.path} successfully`
                 );
                 resolve("Object downloaded successfully.");
             }).catch(err => {
+                if (err.code === 'ECONNABORTED') {
+                    PAILogger.info("No response from '" + url + "'. Check the endpoint and try again.");
+                }
                 PAILogger.info(err);
                 reject(err);
             });

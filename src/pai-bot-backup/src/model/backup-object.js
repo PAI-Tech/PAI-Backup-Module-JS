@@ -1,7 +1,4 @@
-const {
-    PAIEntity
-} = require('@pai-tech/pai-code');
-
+const { PAIEntity } = require('@pai-tech/pai-code');
 
 class BackupObject extends PAIEntity {
 
@@ -24,6 +21,12 @@ class BackupObject extends PAIEntity {
     }
 }
 
+//enum for branching based on file/directory command
+const BackupType = { 
+    FILE : "FILE",
+    DIRECTORY : "DIRECTORY",
+}
+
 module.exports = {
-    BackupObject,
+    BackupObject, BackupType 
 };
