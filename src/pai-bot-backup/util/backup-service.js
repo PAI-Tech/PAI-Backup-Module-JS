@@ -1,8 +1,6 @@
 const AWS = require("aws-sdk");
 const fs = require("fs");
 
-const http = require("http");
-const request = require("request");
 const contentDisposition = require("content-disposition");
 const axios = require("axios");
 const FormData = require("form-data");
@@ -102,24 +100,23 @@ class BackupService {
      * @param {String} url = url (with endpoint) to send request incl. file
      */
     static postHTTP(backupObject, url) {
-        let cdn_key = "";
         let fileStream = fs.createReadStream(backupObject.key);
         fileStream.on("error", err => {
             PAILogger.info("Error reading file/directory", err);
+            return Promise.reject(err);
         });
         return new Promise(async (resolve, reject) => {
-            PAILogger.info(`Uploading object ${backupObject.key}`);
             let form = new FormData();
             form.append('pai_file', fileStream);
+            PAILogger.info(`Uploading object ${backupObject.key}`);
             axios.post(
                 url,
                 form,
                 { headers : form.getHeaders() }
-            ).then ( (response) => {
+            ).then ( response => {
                 PAILogger.info('Upload via HTTP POST successful');
-                console.log(response.data['cdn_key']);
-                resolve(response.data['cdn_key']); 
-            }).catch( (error) => {
+                resolve(response.data['cdn_key']);
+            }).catch( error => {
                 PAILogger.info('Upload failed: ' + error);
                 reject(error);
             });
@@ -135,21 +132,21 @@ class BackupService {
         const cdnKey = backupObject.key;
         const downloadPath = backupObject.path;
         return new Promise( async (resolve, reject) => {
-            const req = request.get(url + '?cdn_key=' + cdnKey)
-                .on('error', function(err) {
-                    PAILogger.info(err);
-                    reject(err);
-                })
-                .on('response', function (res) {
-                    console.log(contentDisposition.parse(res.headers["content-disposition"]).parameters.filename);
-                    if (res.statusCode === 200) {
-                        req.pipe(fs.createWriteStream(
-                            downloadPath + "/" + 
-                            contentDisposition.parse(res.headers["content-disposition"]).parameters.filename));
-                        PAILogger.info(`Object with cdn_key "${cdnKey}" downloaded to ${downloadPath} successfully`);
-                        resolve("Object downloaded successfully.");
-                    }
-                });
+            axios({
+                method:'get',
+                url: url  + '?cdn_key=' + cdnKey,
+                responseType:'stream',
+                timeout : 1000
+            })
+            .then((response) => {
+                let filename = contentDisposition.parse(response.headers["content-disposition"]).parameters.filename;
+                response.data.pipe(fs.createWriteStream(downloadPath + "/" + filename));
+                PAILogger.info(`Object with cdn_key "${cdnKey}" downloaded to ${downloadPath} successfully`);
+                resolve("Object downloaded successfully.");
+            }).catch ( (err) => {
+                PAILogger.info(err);
+                reject(err);
+            });
         });
     }
 }
