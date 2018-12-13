@@ -31,7 +31,7 @@ let CONFIG_S3_BUCKET = "S3_BUCKET",
     CONFIG_CREDENTIALS_PATH = "S3_CREDENTIALS_PATH";
 
 //PAI HTTP params
-let CONFIG_PAI_HTTP_URl = "PAI_HTTP_URl";
+let CONFIG_PAI_HTTP_URL = "PAI_HTTP_URL";
 
 class PCM_BACKUP extends PAICodeModule {
     constructor() {
@@ -200,7 +200,7 @@ class PCM_BACKUP extends PAICodeModule {
                     PAILogger.info("Upload to S3 bucket successful. Key: " + entity.key);
                 } else if (backupService === ServiceType.PAI_HTTP) {
                     //POST to PAI
-                    let url = await this.config.getConfigParam(CONFIG_PAI_HTTP_URl) 
+                    let url = await this.config.getConfigParam(CONFIG_PAI_HTTP_URL) 
                         + "/add-file";
                     let response = await BackupService.postHTTP(entity, url);
                     PAILogger.info("Upload to PAI File Service successful. CDN Key: '" + response + "'");
@@ -250,7 +250,7 @@ class PCM_BACKUP extends PAICodeModule {
                     await BackupService.downloadFromS3(entity, bucketName, credentialsPath);
                 } else if (backupService === ServiceType.PAI_HTTP) {
                     //GET from PAI
-                    let url = await this.config.getConfigParam(CONFIG_PAI_HTTP_URl) 
+                    let url = await this.config.getConfigParam(CONFIG_PAI_HTTP_URL) 
                         + "/get-file"
                         + "?cdn_key="  
                         + entity.key;

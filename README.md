@@ -36,7 +36,7 @@ This module allows a file/directory to be sent to the cloud for secure backup.
 
 2.  Specify the base URL for PAI's File Service. For example, 
 
-    ```pai-backup config param_name:"PAI_HTTP_URl" param_value:"http://localhost:3000"```
+    ```pai-backup config param_name:"PAI_HTTP_URL" param_value:"http://localhost:3000"```
 
 
 ### Using the Module
