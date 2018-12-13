@@ -35,7 +35,8 @@ let CONFIG_PAI_HTTP_URL = "PAI_HTTP_URL";
 
 class PCM_BACKUP extends PAICodeModule {
     constructor() {
-        let infoText = fs.readFileSync('README.md', 'utf8');
+        let infoText = fs.readFileSync(
+            require('path').resolve(__dirname, '../../README.md'), 'utf8');
 
         super(infoText);
 
