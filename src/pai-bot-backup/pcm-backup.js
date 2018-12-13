@@ -48,7 +48,7 @@ class PCM_BACKUP extends PAICodeModule {
             new PAIModuleConfigParam("aws credentials file", "enter the path to your aws credentials", CONFIG_CREDENTIALS_PATH),
 
             //PAI HTTP
-            new PAIModuleConfigParam("PAI file service base URL", "enter the base URL for PAI file service", CONFIG_PAI_HTTP_URl),
+            new PAIModuleConfigParam("PAI file service base URL", "enter the base URL for PAI file service", CONFIG_PAI_HTTP_URL),
         ];
     }
 
